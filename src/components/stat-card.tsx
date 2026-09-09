@@ -24,8 +24,10 @@ export function StatCard({
   const iconContainer = (
     <div
       className={cn(
-        'rounded-full p-2',
-        variant === 'gradient' ? 'bg-white/20' : 'bg-gray-100'
+        'rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110',
+        variant === 'gradient'
+          ? 'bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-xs'
+          : 'bg-primary/10 border border-primary/20 text-primary backdrop-blur-md shadow-xs'
       )}
     >
       {icon}
@@ -35,8 +37,10 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        'rounded-2xl border-none shadow-lg',
-        variant === 'gradient' ? 'text-white bg-gradient-to-br' : 'bg-white/60 backdrop-blur-lg',
+        'group rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 overflow-hidden',
+        variant === 'gradient'
+          ? 'text-white bg-gradient-to-br border border-white/35 shadow-[0_10px_32px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.45)] backdrop-blur-2xl'
+          : 'bg-white/75 dark:bg-zinc-900/65 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_10px_32px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,0.8)]',
         gradient,
         className
       )}

@@ -312,22 +312,22 @@ export default function DashboardPage() {
           {mostRecentRequestId && (
             <Accordion type="single" collapsible className="w-full" defaultValue={mostRecentRequestId}>
               {(contributionRequests || []).map((request) => (
-                <AccordionItem value={request.id!} key={request.id}>
-                  <AccordionTrigger>
+                <AccordionItem value={request.id!} key={request.id} className="border-b border-border/40 py-1">
+                  <AccordionTrigger className="hover:no-underline hover:bg-white/50 dark:hover:bg-white/5 px-4 py-3 rounded-xl transition-all">
                     <div className="flex w-full items-center justify-between pr-4">
-                      <span>{request.title}</span>
-                      <span className="text-muted-foreground">
+                      <span className="font-semibold text-foreground text-base">{request.title}</span>
+                      <span className="text-sm font-semibold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/25 backdrop-blur-md shadow-xs">
                         {formatCurrency(request.amount)}
                       </span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="divide-y divide-border">
+                  <AccordionContent className="pt-2 pb-3 px-1">
+                    <ul className="divide-y divide-border/30 rounded-xl border border-white/50 dark:border-white/10 bg-white/40 dark:bg-black/20 backdrop-blur-md overflow-hidden">
                       {studentContributionStatus(request.id!).map(
                         ({ student, paid, contribution }) => (
                           <li
                             key={student.id}
-                            className="flex items-center justify-between p-3 hover:bg-muted/50"
+                            className="flex items-center justify-between p-3.5 hover:bg-white/60 dark:hover:bg-white/5 transition-colors"
                           >
                             <div className="flex items-center gap-3">
                               {paid ? (

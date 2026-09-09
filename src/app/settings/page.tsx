@@ -23,8 +23,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { User, AppSettings } from '@/lib/types';
-import { PlusCircle, MoreHorizontal, Trash2, Settings as SettingsIcon, Eye, EyeOff, Key, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Settings as SettingsIcon, Eye, EyeOff, Key, ExternalLink, Image as ImageIcon, RotateCcw, Loader2, Handshake, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { uploadImageToImgBB } from '@/lib/imgbb';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,9 @@ export default function SettingsPage() {
   
   const [confirmationCode, setConfirmationCode] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isSavingLogo, setIsSavingLogo] = useState(false);
 
   const handleOpenForm = (user: User | null = null) => {
     setEditingUser(user);
@@ -150,6 +154,83 @@ export default function SettingsPage() {
         }
     }
   }
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setLogoFile(null);
+      setLogoPreview(null);
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: 'destructive',
+        title: 'Formato no válido',
+        description: 'Por favor selecciona un archivo de imagen (PNG, JPG, WebP, SVG).',
+      });
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveHeaderLogo = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!settingsDocRef) return;
+
+    const formData = new FormData(event.currentTarget);
+    const urlInput = (formData.get('headerLogoUrl') as string)?.trim() || '';
+
+    setIsSavingLogo(true);
+    try {
+      let finalLogoUrl = urlInput;
+
+      if (logoFile) {
+        const apiKey = appSettings?.imgbbApiKey || process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+        if (!apiKey) {
+          toast({
+            variant: 'destructive',
+            title: 'ImgBB no configurado',
+            description: 'Para subir un archivo de imagen, primero ingresa tu API Key de ImgBB arriba.',
+          });
+          setIsSavingLogo(false);
+          return;
+        }
+        toast({ title: 'Subiendo logotipo...', description: 'Alojando imagen en ImgBB.' });
+        finalLogoUrl = await uploadImageToImgBB(logoFile, apiKey);
+      }
+
+      await setDocument(settingsDocRef, { headerLogoUrl: finalLogoUrl }, { merge: true });
+      toast({ title: 'Logotipo actualizado', description: 'El nuevo logotipo se mostrará en la aplicación.' });
+      setLogoFile(null);
+      setLogoPreview(null);
+    } catch (e: any) {
+      console.error('Error saving header logo:', e);
+      toast({
+        variant: 'destructive',
+        title: 'Error al guardar el logotipo',
+        description: e?.message || 'No se pudo actualizar el logotipo.',
+      });
+    } finally {
+      setIsSavingLogo(false);
+    }
+  };
+
+  const handleResetHeaderLogo = async () => {
+    if (!settingsDocRef) return;
+    try {
+      await setDocument(settingsDocRef, { headerLogoUrl: '' }, { merge: true });
+      setLogoFile(null);
+      setLogoPreview(null);
+      toast({ title: 'Logotipo restablecido', description: 'Se restauró el logo predeterminado.' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error al restablecer logotipo' });
+    }
+  };
 
   const handleSaveImgBBSettings = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -308,6 +389,103 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5 text-primary"/> Logotipo del Encabezado
+                </CardTitle>
+                <CardDescription>
+                  Personaliza el logotipo que aparece en la barra superior y menú de la aplicación.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveHeaderLogo} className="space-y-4">
+                  {/* Vista previa actual */}
+                  <div className="flex items-center gap-4 p-3 rounded-lg border bg-muted/30">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border bg-background p-1 shadow-xs overflow-hidden">
+                      {logoPreview || appSettings?.headerLogoUrl ? (
+                        <img
+                          src={logoPreview || appSettings?.headerLogoUrl}
+                          alt="Vista previa del logo"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <Handshake className="h-7 w-7 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {logoPreview
+                          ? 'Nueva imagen seleccionada'
+                          : appSettings?.headerLogoUrl
+                          ? 'Logotipo personalizado activo'
+                          : 'Logotipo predeterminado activo'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {appSettings?.headerLogoUrl && !logoPreview
+                          ? 'Se muestra en el encabezado de la app.'
+                          : 'Formatos recomendados: PNG o WebP con fondo transparente.'}
+                      </p>
+                    </div>
+                    {appSettings?.headerLogoUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResetHeaderLogo}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                        Restablecer
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Opción 1: Subir archivo */}
+                  <div className="space-y-2">
+                    <Label htmlFor="logoFileInput">Subir imagen desde tu equipo</Label>
+                    <Input
+                      id="logoFileInput"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoFileChange}
+                      disabled={isSavingLogo}
+                      className="cursor-pointer file:cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {appSettings?.imgbbApiKey
+                        ? 'Se subirá y alojará automáticamente en tu cuenta de ImgBB.'
+                        : '⚠️ Requiere tener configurada la clave de ImgBB arriba para subir archivos.'}
+                    </p>
+                  </div>
+
+                  {/* Opción 2: URL directa */}
+                  <div className="space-y-2">
+                    <Label htmlFor="headerLogoUrl">O ingresa una URL de imagen directa</Label>
+                    <Input
+                      id="headerLogoUrl"
+                      name="headerLogoUrl"
+                      type="url"
+                      placeholder="https://i.ibb.co/ejemplo/logo.png"
+                      defaultValue={appSettings?.headerLogoUrl || ''}
+                      disabled={isSavingLogo}
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={isSavingLogo}>
+                    {isSavingLogo ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Guardando logotipo...
+                      </>
+                    ) : (
+                      'Guardar Logotipo'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <ImageIcon className="h-5 w-5"/> Logo de la PWA
                 </CardTitle>
                 <CardDescription>Personaliza el ícono de la aplicación instalable.</CardDescription>
@@ -327,7 +505,7 @@ export default function SettingsPage() {
                       Usa una URL pública de una imagen (preferiblemente 512x512px en formato PNG).
                     </p>
                   </div>
-                  <Button type="submit">Guardar Logo</Button>
+                  <Button type="submit">Guardar Logo PWA</Button>
                 </form>
               </CardContent>
             </Card>

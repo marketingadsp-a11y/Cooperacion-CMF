@@ -56,4 +56,5 @@ export type AppSettings = {
   id?: 'app_settings'; // Singleton document
   pwaLogoUrl?: string;
   imgbbApiKey?: string;
+  headerLogoUrl?: string;
 };
