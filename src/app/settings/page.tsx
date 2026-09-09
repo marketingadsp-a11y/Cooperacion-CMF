@@ -124,7 +124,6 @@ export default function SettingsPage() {
       await deleteDocument(userDocRef);
       toast({ title: 'Usuario eliminado' });
       setDeletingUser(null);
-      window.location.reload();
     } catch (e) {
       console.error('Error deleting user:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar el usuario.' });
@@ -283,7 +282,6 @@ export default function SettingsPage() {
       toast({ title: 'Todos los alumnos han sido eliminados' });
       setDeleteAllStudentsDialogOpen(false);
       setConfirmationCode('');
-      window.location.reload();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error al eliminar alumnos' });
     }
@@ -305,7 +303,6 @@ export default function SettingsPage() {
       toast({ title: 'Todas las cooperaciones han sido eliminadas' });
       setDeleteAllContributionsDialogOpen(false);
       setConfirmationCode('');
-      window.location.reload();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error al eliminar cooperaciones' });
     }
@@ -325,7 +322,6 @@ export default function SettingsPage() {
       toast({ title: 'Todos los gastos han sido eliminados' });
       setDeleteAllExpensesDialogOpen(false);
       setConfirmationCode('');
-      window.location.reload();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error al eliminar gastos' });
     }
@@ -348,7 +344,6 @@ export default function SettingsPage() {
       toast({ title: 'Sistema reiniciado por completo' });
       setDeleteAllDataDialogOpen(false);
       setConfirmationCode('');
-      window.location.reload();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error al reiniciar el sistema' });
     }

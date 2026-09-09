@@ -200,7 +200,6 @@ export default function ExpensesPage() {
 
       toast({ title: '¡Gasto registrado!', description: 'El gasto se ha guardado correctamente.' });
       handleCloseDialog(false);
-      window.location.reload();
     } catch (e: any) {
       console.error('Error adding expense:', e);
       toast({ variant: 'destructive', title: 'Error al registrar el gasto', description: e?.message || 'No se pudo registrar el gasto.' });
@@ -223,7 +222,6 @@ export default function ExpensesPage() {
       );
       toast({ title: 'Gasto eliminado', description: 'El gasto ha sido eliminado correctamente.' });
       setDeletingExpense(null);
-      window.location.reload();
     } catch (e) {
       console.error('Error deleting expense:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar el gasto.' });

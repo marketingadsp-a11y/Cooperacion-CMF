@@ -102,7 +102,6 @@ export default function RequestsPage() {
       );
       toast({ title: 'Solicitud eliminada' });
       setDeletingRequest(null);
-      window.location.reload();
     } catch (e) {
       console.error('Error deleting request:', e);
       toast({

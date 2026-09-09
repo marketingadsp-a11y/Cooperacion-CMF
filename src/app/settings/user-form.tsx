@@ -51,7 +51,6 @@ export function UserForm({ isOpen, onClose, user }: UserFormProps) {
         toast({ title: "Usuario añadido" });
       }
       onClose();
-      window.location.reload();
     } catch (e) {
       console.error("Error saving user:", e);
       toast({

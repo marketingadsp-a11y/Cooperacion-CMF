@@ -54,7 +54,6 @@ export function RequestForm({ isOpen, onClose, request }: RequestFormProps) {
         toast({ title: 'Solicitud creada' });
       }
       onClose();
-      window.location.reload();
     } catch (e) {
       console.error("Error saving request:", e);
       toast({

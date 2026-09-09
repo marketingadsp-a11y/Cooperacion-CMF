@@ -143,7 +143,6 @@ export default function StudentsPage() {
         toast({ title: 'Alumno añadido' });
       }
       handleCloseForm();
-      window.location.reload();
     } catch (e) {
       console.error('Error saving student:', e);
       toast({
@@ -166,7 +165,6 @@ export default function StudentsPage() {
         description: `Se ha eliminado a ${deletingStudent.name} de la lista.`,
       });
       setDeletingStudent(null);
-      window.location.reload();
     } catch (e) {
       console.error('Error deleting student:', e);
       toast({
@@ -226,7 +224,6 @@ export default function StudentsPage() {
       });
       setImportDialogOpen(false);
       setImportList('');
-      window.location.reload();
     } catch (error) {
       console.error('Error al importar alumnos:', error);
       toast({

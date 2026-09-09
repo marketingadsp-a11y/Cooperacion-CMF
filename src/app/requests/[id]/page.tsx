@@ -166,7 +166,6 @@ export default function RequestDetailsPage() {
         title: '¡Pago Registrado!',
         description: `Se ha marcado a ${studentName} como pagado.`,
       });
-      window.location.reload();
     } catch (e) {
       console.error('Error marking as paid:', e);
       toast({
@@ -198,7 +197,6 @@ export default function RequestDetailsPage() {
         description: 'El estado se ha cambiado a pendiente.',
       });
       setRevertingContribution(null);
-      window.location.reload();
     } catch (e) {
       console.error('Error reverting payment:', e);
       toast({

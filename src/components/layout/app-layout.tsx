@@ -52,8 +52,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: appSettings } = useDoc<AppSettings>(settingsDocRef);
   
   useEffect(() => {
-    // Attempt to get admin name from session storage on initial load
-    const storedName = sessionStorage.getItem('adminName');
+    // Intentar recuperar el nombre del admin de localStorage para persistir entre sesiones móviles
+    const storedName = typeof window !== 'undefined' ? localStorage.getItem('adminName') : null;
     if (user && storedName) {
       setAdminName(storedName);
     }
@@ -102,7 +102,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
 
       setAdminName(foundUser.name);
-      sessionStorage.setItem('adminName', foundUser.name);
+      localStorage.setItem('adminName', foundUser.name);
 
       toast({
         title: `¡Bienvenido, ${foundUser.name}!`,
@@ -129,7 +129,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     try {
       await signOut(auth);
       setAdminName(null);
-      sessionStorage.removeItem('adminName');
+      localStorage.removeItem('adminName');
       toast({
         title: 'Has cerrado sesión',
       });
