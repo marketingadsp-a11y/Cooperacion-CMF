@@ -1,0 +1,198 @@
+{
+  "entities": {
+    "Student": {
+      "title": "Student",
+      "type": "object",
+      "description": "Represents a student and their parent's name.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the student."
+        },
+        "parentName": {
+          "type": "string",
+          "description": "The name of the parent or guardian."
+        }
+      },
+      "required": ["name", "parentName"]
+    },
+    "ContributionRequest": {
+      "title": "ContributionRequest",
+      "type": "object",
+      "description": "Represents a request for a financial contribution.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the contribution request."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the contribution request."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The requested amount."
+        },
+        "createdAt": {
+          "type": "object",
+          "description": "The date the request was created. Should be a server timestamp."
+        }
+      },
+      "required": ["title", "amount"]
+    },
+    "Contribution": {
+      "title": "Contribution",
+      "type": "object",
+      "description": "Represents a single contribution made by a student.",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "The ID of the student making the contribution."
+        },
+        "studentName": {
+          "type": "string",
+          "description": "The name of the student making the contribution."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "The ID of the contribution request this is for."
+        },
+        "requestTitle": {
+          "type": "string",
+          "description": "The title of the contribution request."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the contribution."
+        },
+        "date": {
+          "type": "object",
+          "description": "The date the contribution was made. Should be a server timestamp."
+        }
+      },
+      "required": ["studentId", "requestId", "amount", "date", "studentName", "requestTitle"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an expense record.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "A description of the expense."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the expense."
+        },
+        "date": {
+          "type": "object",
+          "description": "The date the expense was incurred. Should be a server timestamp."
+        }
+      },
+      "required": ["description", "amount", "date"]
+    },
+    "User": {
+      "title": "User",
+      "type": "object",
+      "description": "Represents an administrator user.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the user."
+        },
+        "accessCode": {
+          "type": "string",
+          "description": "The numeric access code for the user."
+        }
+      },
+      "required": ["name", "accessCode"]
+    },
+    "LogEntry": {
+      "title": "LogEntry",
+      "type": "object",
+      "description": "Represents a log entry for an action performed in the system.",
+      "properties": {
+        "timestamp": {
+          "type": "object",
+          "description": "The server timestamp when the action occurred."
+        },
+        "user": {
+          "type": "string",
+          "description": "The name of the user who performed the action."
+        },
+        "action": {
+          "type": "string",
+          "description": "A description of the action performed."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense", "student", "request", "system"],
+          "description": "The category of the action."
+        }
+      },
+      "required": ["timestamp", "user", "action", "type"]
+    },
+     "AppSettings": {
+      "title": "AppSettings",
+      "type": "object",
+      "description": "Stores global application settings.",
+      "properties": {
+        "pwaLogoUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL for the PWA icon."
+        }
+      }
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "/students/{studentId}": {
+      "schema": {
+        "$ref": "#/entities/Student"
+      },
+      "description": "Stores information about each student."
+    },
+    "/contribution_requests/{requestId}": {
+      "schema": {
+        "$ref": "#/entities/ContributionRequest"
+      },
+      "description": "Stores all requests for contributions."
+    },
+    "/contributions/{contributionId}": {
+      "schema": {
+        "$ref": "#/entities/Contribution"
+      },
+      "description": "Stores individual contributions made by students for specific requests."
+    },
+    "/expenses/{expenseId}": {
+      "schema": {
+        "$ref": "#/entities/Expense"
+      },
+      "description": "Stores all expense records."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores administrator user accounts."
+    },
+    "/logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/LogEntry"
+      },
+      "description": "Stores a log of all actions performed in the system."
+    },
+     "/settings/app_settings": {
+      "schema": {
+        "$ref": "#/entities/AppSettings"
+      },
+      "description": "Stores global application settings as a singleton document."
+    }
+  }
+}
