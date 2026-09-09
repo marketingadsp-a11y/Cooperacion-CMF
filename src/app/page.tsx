@@ -197,33 +197,33 @@ export default function DashboardPage() {
               />
             </div>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg max-w-[95vw] w-full">
             <DialogHeader>
               <DialogTitle>Pendientes: {mostRecentRequestTitle}</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="max-h-[60vh] -mx-6 px-6">
-              <div className="space-y-3 py-4">
-                {pendingStudents?.map(({ student }) => (
-                  <div key={student.id} className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                      <UserX className="h-5 w-5" />
+            <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden space-y-2.5 pr-1 py-1">
+              {pendingStudents?.map(({ student }) => (
+                <div key={student.id} className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 sm:p-3.5 transition-colors hover:bg-muted/50">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                      <UserX className="h-4 w-4" />
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground">{student.name}</p>
-                      <p className="text-sm text-muted-foreground">{student.parentName}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-foreground truncate">{student.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{student.parentName}</p>
                     </div>
-                    <Badge variant="destructive">Pendiente</Badge>
                   </div>
-                ))}
-                {pendingStudents?.length === 0 && (
-                   <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-4" />
-                    <h3 className="font-semibold text-lg">¡Todo al día!</h3>
-                    <p className="text-muted-foreground">No hay alumnos pendientes para esta solicitud.</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+                  <Badge variant="destructive" className="shrink-0">Pendiente</Badge>
+                </div>
+              ))}
+              {pendingStudents?.length === 0 && (
+                 <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-4" />
+                  <h3 className="font-semibold text-lg">¡Todo al día!</h3>
+                  <p className="text-muted-foreground">No hay alumnos pendientes para esta solicitud.</p>
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -240,47 +240,49 @@ export default function DashboardPage() {
               />
             </div>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg max-w-[95vw] w-full">
             <DialogHeader>
               <DialogTitle>Registro de Gastos</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="max-h-[60vh] -mx-6 px-6">
-              <div className="space-y-3 py-4">
-                {expenses?.map((expense) => (
-                  <div key={expense.id} className="flex items-center gap-3 rounded-lg border bg-card p-3 sm:p-4 transition-colors hover:bg-muted/50">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                      <ShoppingCart className="h-5 w-5" />
+            <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden space-y-2.5 pr-1 py-1">
+              {expenses?.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 sm:p-3.5 transition-colors hover:bg-muted/50">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                      <ShoppingCart className="h-4 w-4" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground truncate">{expense.description}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-foreground truncate" title={expense.description}>{expense.description}</p>
                       <p className="text-xs text-muted-foreground">{toDate(expense.date).toLocaleDateString()}</p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {expense.receiptUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-xs text-primary hover:bg-primary/10 gap-1 rounded-md"
-                          onClick={() => setViewingReceipt(expense)}
-                          title="Ver ticket del gasto"
-                        >
-                          <Receipt className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline text-xs font-medium">Ticket</span>
-                        </Button>
-                      )}
-                      <p className="font-semibold text-destructive text-sm sm:text-base">-{formatCurrency(expense.amount)}</p>
-                    </div>
                   </div>
-                ))}
-                {expenses?.length === 0 && (
-                   <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <h3 className="font-semibold text-lg">Sin Gastos</h3>
-                    <p className="text-muted-foreground">Aún no se han registrado gastos.</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {expense.receiptUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-primary border-primary/30 hover:bg-primary/10 gap-1 rounded-md"
+                        onClick={() => setViewingReceipt(expense)}
+                        title="Ver ticket del gasto"
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        <span className="text-xs font-medium">Ticket</span>
+                      </Button>
+                    )}
+                    <span className="font-bold text-destructive text-sm sm:text-base whitespace-nowrap">
+                      -{formatCurrency(expense.amount)}
+                    </span>
                   </div>
-                )}
-              </div>
-            </ScrollArea>
+                </div>
+              ))}
+              {expenses?.length === 0 && (
+                 <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <h3 className="font-semibold text-lg">Sin Gastos</h3>
+                  <p className="text-muted-foreground">Aún no se han registrado gastos.</p>
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
         
