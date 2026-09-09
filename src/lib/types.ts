@@ -29,6 +29,7 @@ export type Expense = {
   description: string;
   amount: number;
   date: Timestamp | object;
+  receiptUrl?: string;
 };
 
 export type User = {
@@ -54,4 +55,5 @@ export type SampleData = {
 export type AppSettings = {
   id?: 'app_settings'; // Singleton document
   pwaLogoUrl?: string;
+  imgbbApiKey?: string;
 };

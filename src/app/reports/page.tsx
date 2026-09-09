@@ -101,7 +101,7 @@ export default function ReportsPage() {
       tx.description,
       tx.date.toLocaleDateString('es-MX'),
       tx.type === 'income' ? 'Ingreso' : 'Gasto',
-      { content: formatCurrency(tx.amount), styles: { halign: 'right' } }
+      { content: formatCurrency(tx.amount), styles: { halign: 'right' as const } }
     ]);
     const exportDate = new Date().toLocaleDateString('es-MX');
 
@@ -126,7 +126,7 @@ export default function ReportsPage() {
     });
 
     // Add summary section
-    let finalY = doc.autoTable.previous.finalY || 50;
+    let finalY = (doc as any).lastAutoTable?.finalY || (doc.autoTable as any)?.previous?.finalY || 50;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Resumen Financiero', 14, finalY + 15);

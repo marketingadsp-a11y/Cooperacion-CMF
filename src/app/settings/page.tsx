@@ -23,7 +23,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { User, AppSettings } from '@/lib/types';
-import { PlusCircle, MoreHorizontal, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Settings as SettingsIcon, Eye, EyeOff, Key, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,7 @@ export default function SettingsPage() {
   const [isDeleteAllDataDialogOpen, setDeleteAllDataDialogOpen] = useState(false);
   
   const [confirmationCode, setConfirmationCode] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const handleOpenForm = (user: User | null = null) => {
     setEditingUser(user);
@@ -149,6 +151,21 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveImgBBSettings = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!settingsDocRef) return;
+    const formData = new FormData(event.currentTarget);
+    const imgbbApiKey = (formData.get('imgbbApiKey') as string)?.trim() || '';
+    
+    try {
+      await setDocument(settingsDocRef, { imgbbApiKey }, { merge: true });
+      toast({ title: 'Clave de ImgBB guardada', description: 'La integración con ImgBB ha sido configurada.' });
+    } catch (e) {
+      console.error("Error saving ImgBB settings:", e);
+      toast({ variant: "destructive", title: "Error", description: "No se pudo guardar la clave de API." });
+    }
+  };
+
   const handleSavePWASettings = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!settingsDocRef) return;
@@ -158,12 +175,11 @@ export default function SettingsPage() {
     try {
       await setDocument(settingsDocRef, { pwaLogoUrl }, { merge: true });
       toast({ title: 'Ajustes guardados', description: 'El logo de la PWA ha sido actualizado.' });
-      window.location.reload();
     } catch (e) {
       console.error("Error saving PWA settings:", e);
       toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar los ajustes." });
     }
-  }
+  };
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8">
@@ -227,30 +243,95 @@ export default function SettingsPage() {
         </Card>
 
         {user && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><SettingsIcon className="h-5 w-5"/> Ajustes de la Aplicación</CardTitle>
-              <CardDescription>Personaliza el comportamiento y la apariencia de la aplicación.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSavePWASettings} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pwaLogoUrl">URL del Logo para PWA</Label>
-                  <Input 
-                    id="pwaLogoUrl" 
-                    name="pwaLogoUrl" 
-                    type="url"
-                    placeholder="https://example.com/logo.png"
-                    defaultValue={appSettings?.pwaLogoUrl || ''} 
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Usa una URL pública de una imagen (preferiblemente 512x512px en formato PNG) para el ícono de la app instalable.
-                  </p>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="h-5 w-5 text-primary" /> API de ImgBB (Tickets y Fotos)
+                  </CardTitle>
+                  {appSettings?.imgbbApiKey ? (
+                    <Badge variant="outline" className="border-emerald-500/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                      Configurada
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      Sin configurar
+                    </Badge>
+                  )}
                 </div>
-                <Button type="submit">Guardar Ajustes</Button>
-              </form>
-            </CardContent>
-          </Card>
+                <CardDescription>
+                  Permite subir fotos de tickets y comprobantes al registrar un gasto en la aplicación.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveImgBBSettings} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="imgbbApiKey">API Key de ImgBB</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="imgbbApiKey"
+                          name="imgbbApiKey"
+                          type={showApiKey ? 'text' : 'password'}
+                          placeholder="Ingresa tu clave de API de ImgBB"
+                          defaultValue={appSettings?.imgbbApiKey || ''}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          title={showApiKey ? 'Ocultar clave' : 'Mostrar clave'}
+                        >
+                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <Button type="submit">Guardar Clave</Button>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                      <span>¿No tienes una clave? Puedes obtenerla gratis en ImgBB.</span>
+                      <a
+                        href="https://api.imgbb.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-primary hover:underline font-medium"
+                      >
+                        Obtener API Key <ExternalLink className="ml-1 h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5"/> Logo de la PWA
+                </CardTitle>
+                <CardDescription>Personaliza el ícono de la aplicación instalable.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSavePWASettings} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pwaLogoUrl">URL del Logo para PWA</Label>
+                    <Input 
+                      id="pwaLogoUrl" 
+                      name="pwaLogoUrl" 
+                      type="url"
+                      placeholder="https://example.com/logo.png"
+                      defaultValue={appSettings?.pwaLogoUrl || ''} 
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Usa una URL pública de una imagen (preferiblemente 512x512px en formato PNG).
+                    </p>
+                  </div>
+                  <Button type="submit">Guardar Logo</Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
 

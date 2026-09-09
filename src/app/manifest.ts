@@ -16,13 +16,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
         src: pwaLogoUrl,
         sizes: '192x192',
         type: 'image/jpeg',
-        purpose: 'any maskable',
+        purpose: 'maskable',
       },
       {
         src: pwaLogoUrl,
         sizes: '512x512',
         type: 'image/jpeg',
-        purpose: 'any maskable',
+        purpose: 'maskable',
       },
     ],
   };
