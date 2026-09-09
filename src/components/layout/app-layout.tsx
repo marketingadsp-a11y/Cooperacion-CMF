@@ -217,9 +217,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       <LogIn className="h-6 w-6" />
                     </div>
                     <DialogTitle className="text-xl font-bold">Acceso de Administrador</DialogTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ingresa tu código numérico de acceso
-                    </p>
                   </DialogHeader>
                   <form onSubmit={handleLogin} className="space-y-4 pt-2">
                     <div className="relative">
@@ -286,28 +283,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 relative">
           {children}
 
-          {/* Floating Action Dock (Apple Liquid Glass Dock) */}
+          {/* Floating Action Dock (Apple Liquid Glass Dock) - Botones al doble de tamaño */}
           {user && (
-            <div className="fixed bottom-6 right-6 z-40 flex flex-row items-center gap-2.5 p-2 rounded-full border border-white/40 dark:border-white/15 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.6)] transition-all">
+            <div className="fixed bottom-6 right-6 z-40 flex flex-row items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-3xl sm:rounded-full border border-white/40 dark:border-white/15 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.22),inset_0_1px_1px_rgba(255,255,255,0.6)] transition-all">
               {pathname !== '/' && (
                 <Button
                   asChild
-                  className="h-12 w-12 rounded-full shadow-md bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all hover:scale-105"
+                  className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0"
                   size="icon"
                 >
                   <Link href="/">
-                    <LayoutDashboard className="h-5 w-5" />
+                    <LayoutDashboard className="h-10 w-10 sm:h-12 sm:w-12" />
                     <span className="sr-only">Ir al Panel Principal</span>
                   </Link>
                 </Button>
               )}
               <Button
                 asChild
-                className="h-12 w-12 rounded-full shadow-md bg-gradient-to-br from-primary to-accent hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105"
+                className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg bg-gradient-to-br from-primary to-accent hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0"
                 size="icon"
               >
                 <Link href="/requests">
-                  <Handshake className="h-5 w-5" />
+                  <Handshake className="h-10 w-10 sm:h-12 sm:w-12" />
                   <span className="sr-only">Ir a Cooperaciones</span>
                 </Link>
               </Button>

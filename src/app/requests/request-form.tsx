@@ -82,7 +82,17 @@ export function RequestForm({ isOpen, onClose, request }: RequestFormProps) {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="amount" className="text-right">Monto</Label>
-            <Input id="amount" name="amount" type="number" step="0.01" className="col-span-3" defaultValue={request?.amount || ''} required />
+            <Input
+              id="amount"
+              name="amount"
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              pattern="[0-9]*"
+              className="col-span-3"
+              defaultValue={request?.amount || ''}
+              required
+            />
           </div>
         </form>
         <DialogFooter>

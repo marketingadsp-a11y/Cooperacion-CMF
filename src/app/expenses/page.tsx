@@ -239,7 +239,18 @@ export default function ExpensesPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="amount" className="text-right">Monto</Label>
-                <Input id="amount" name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" className="col-span-3" required />
+                <Input
+                  id="amount"
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  inputMode="decimal"
+                  pattern="[0-9]*"
+                  className="col-span-3"
+                  required
+                />
               </div>
 
               {/* Selector de ticket / comprobante */}
