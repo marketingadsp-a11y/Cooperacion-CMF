@@ -97,3 +97,12 @@
     background-attachment: fixed;
   }
 }
+
+/* Prevenir el auto-zoom involuntario de iOS Safari y navegadores móviles */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

@@ -442,7 +442,7 @@ export default function StudentsPage() {
             <Input
               type="search"
               placeholder="Buscar por alumno o padre..."
-              className="w-full h-11 rounded-2xl bg-white/80 dark:bg-black/40 border-muted-foreground/20 pl-10 pr-9 focus-visible:ring-primary text-sm shadow-inner"
+              className="w-full h-11 rounded-2xl bg-white/80 dark:bg-black/40 border-muted-foreground/20 pl-10 pr-9 focus-visible:ring-primary text-base shadow-inner"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
