@@ -21,12 +21,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard } from 'lucide-react';
+import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
 import { useState, useEffect } from 'react';
-import { collection, doc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, query, where, limit, getDocs } from 'firebase/firestore';
 import type { User as AppUser, AppSettings } from '@/lib/types';
 import { AddExpenseFAB } from './add-expense-fab';
 import Link from 'next/link';
@@ -40,6 +40,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isLoginOpen, setLoginOpen] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [adminName, setAdminName] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+  const [accessCodeInput, setAccessCodeInput] = useState('');
   const pathname = usePathname();
 
   const settingsDocRef = useMemoFirebase(
@@ -56,27 +59,48 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const handleOpenLoginChange = (open: boolean) => {
+    setLoginOpen(open);
+    if (!open) {
+      setLoginError(null);
+      setIsLoggingIn(false);
+      setAccessCodeInput('');
+      setShowCode(false);
+    }
+  };
+
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!auth || !firestore) return;
+    if (!auth || !firestore || isLoggingIn) return;
 
-    const formData = new FormData(event.currentTarget);
-    const accessCode = formData.get('accessCode') as string;
+    const cleanCode = accessCodeInput.trim();
+    if (!cleanCode) {
+      setLoginError('Por favor ingresa un código.');
+      return;
+    }
+
     setLoginError(null);
+    setIsLoggingIn(true);
 
     try {
+      // 1. Consulta optimizada a Firestore con limit(1)
       const usersRef = collection(firestore, 'users');
-      const q = query(usersRef, where('accessCode', '==', accessCode));
+      const q = query(usersRef, where('accessCode', '==', cleanCode), limit(1));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
         setLoginError('Código de acceso no válido.');
+        setIsLoggingIn(false);
         return;
       }
-      
-      await signInAnonymously(auth);
 
       const foundUser = querySnapshot.docs[0].data() as AppUser;
+
+      // 2. Solo autenticar si no existe ya una sesión activa (ahorra viajes de red lentos)
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
       setAdminName(foundUser.name);
       sessionStorage.setItem('adminName', foundUser.name);
 
@@ -84,8 +108,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         title: `¡Bienvenido, ${foundUser.name}!`,
         description: 'Has iniciado sesión como administrador.',
       });
+      
       setLoginOpen(false);
-
+      setAccessCodeInput('');
     } catch (error: any) {
       console.error(error);
       setLoginError(error.message || 'Ocurrió un error al iniciar sesión.');
@@ -94,6 +119,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         title: 'Error de acceso',
         description: error.message,
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -177,33 +204,77 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           ) : (
             auth && (
-              <Dialog open={isLoginOpen} onOpenChange={setLoginOpen}>
+              <Dialog open={isLoginOpen} onOpenChange={handleOpenLoginChange}>
                 <DialogTrigger asChild>
                   <Button className="rounded-xl shadow-xs bg-primary hover:bg-primary/90">
                     <LogIn className="mr-2 h-4 w-4" />
                     Acceder
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Acceso de Administrador</DialogTitle>
+                <DialogContent className="sm:max-w-[400px] w-[92vw] rounded-2xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl p-6">
+                  <DialogHeader className="text-center sm:text-center pb-1">
+                    <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center mb-2 text-primary border border-primary/20 shadow-inner">
+                      <LogIn className="h-6 w-6" />
+                    </div>
+                    <DialogTitle className="text-xl font-bold">Acceso de Administrador</DialogTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ingresa tu código numérico de acceso
+                    </p>
                   </DialogHeader>
-                  <form onSubmit={handleLogin} className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="accessCode" className="text-right">
-                        Código
-                      </Label>
+                  <form onSubmit={handleLogin} className="space-y-4 pt-2">
+                    <div className="relative">
                       <Input
                         id="accessCode"
                         name="accessCode"
-                        type="password"
-                        className="col-span-3"
+                        type={showCode ? 'text' : 'password'}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="one-time-code"
+                        placeholder="••••"
+                        value={accessCodeInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setAccessCodeInput(val);
+                          if (loginError) setLoginError(null);
+                        }}
+                        className="text-center text-2xl tracking-[0.35em] font-mono h-14 rounded-xl bg-white/60 dark:bg-black/40 border-muted-foreground/20 focus-visible:ring-primary pr-12 text-foreground"
+                        autoFocus
+                        disabled={isLoggingIn}
+                        maxLength={8}
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowCode(!showCode)}
+                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg hover:bg-muted/40"
+                        title={showCode ? 'Ocultar código' : 'Mostrar código'}
+                      >
+                        {showCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
                     </div>
-                    {loginError && <p className="text-center text-sm text-destructive">{loginError}</p>}
-                    <DialogFooter>
-                      <Button type="submit">Entrar</Button>
+
+                    {loginError && (
+                      <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2.5 text-center text-xs text-destructive font-medium animate-in fade-in">
+                        {loginError}
+                      </div>
+                    )}
+
+                    <DialogFooter className="pt-2 sm:space-x-0">
+                      <Button
+                        type="submit"
+                        className="w-full h-11 rounded-xl font-medium shadow-md transition-all active:scale-[0.98]"
+                        disabled={isLoggingIn || !accessCodeInput.trim()}
+                      >
+                        {isLoggingIn ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Verificando acceso...
+                          </>
+                        ) : (
+                          'Entrar'
+                        )}
+                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
