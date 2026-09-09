@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -57,6 +58,9 @@ import {
   CheckCircle,
   ShoppingCart,
   UserX,
+  Receipt,
+  ExternalLink,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type { Student, Contribution, ContributionRequest, Expense } from '@/lib/types';
 import { useUser, useCollection, useFirestore, useMemoFirebase, addDocument, deleteDocument } from '@/firebase';
@@ -68,6 +72,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [isExpensesModalOpen, setExpensesModalOpen] = useState(false);
   const [isPendingModalOpen, setPendingModalOpen] = useState(false);
+  const [viewingReceipt, setViewingReceipt] = useState<Expense | null>(null);
   const [revertingContribution, setRevertingContribution] = useState<Contribution | null>(null);
 
   const studentsQuery = useMemoFirebase(
@@ -242,15 +247,29 @@ export default function DashboardPage() {
             <ScrollArea className="max-h-[60vh] -mx-6 px-6">
               <div className="space-y-3 py-4">
                 {expenses?.map((expense) => (
-                  <div key={expense.id} className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                  <div key={expense.id} className="flex items-center gap-3 rounded-lg border bg-card p-3 sm:p-4 transition-colors hover:bg-muted/50">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
                       <ShoppingCart className="h-5 w-5" />
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground">{toDate(expense.date).toLocaleDateString()}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground truncate">{expense.description}</p>
+                      <p className="text-xs text-muted-foreground">{toDate(expense.date).toLocaleDateString()}</p>
                     </div>
-                    <p className="font-semibold text-destructive">-{formatCurrency(expense.amount)}</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {expense.receiptUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs text-primary hover:bg-primary/10 gap-1 rounded-md"
+                          onClick={() => setViewingReceipt(expense)}
+                          title="Ver ticket del gasto"
+                        >
+                          <Receipt className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline text-xs font-medium">Ticket</span>
+                        </Button>
+                      )}
+                      <p className="font-semibold text-destructive text-sm sm:text-base">-{formatCurrency(expense.amount)}</p>
+                    </div>
                   </div>
                 ))}
                 {expenses?.length === 0 && (
@@ -378,6 +397,60 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal / Lightbox para visualizar el ticket del gasto */}
+      <Dialog open={!!viewingReceipt} onOpenChange={(open) => !open && setViewingReceipt(null)}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Receipt className="h-5 w-5 text-primary" />
+              Comprobante de Gasto
+            </DialogTitle>
+            {viewingReceipt && (
+              <div className="flex flex-wrap items-center justify-between text-sm text-muted-foreground pt-1 border-b pb-2">
+                <span className="font-medium text-foreground">{viewingReceipt.description}</span>
+                <span>
+                  <strong className="text-foreground">{formatCurrency(viewingReceipt.amount)}</strong> • {toDate(viewingReceipt.date).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto my-3 flex items-center justify-center bg-black/5 dark:bg-black/40 rounded-lg p-2 min-h-[250px]">
+            {viewingReceipt?.receiptUrl ? (
+              <img
+                src={viewingReceipt.receiptUrl}
+                alt={`Ticket de ${viewingReceipt.description}`}
+                className="max-h-[60vh] max-w-full object-contain rounded shadow-sm"
+              />
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                <ImageIcon className="mx-auto h-12 w-12 opacity-40 mb-2" />
+                <p>No se pudo cargar la imagen del comprobante.</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex sm:justify-between items-center gap-2 pt-2 border-t">
+            {viewingReceipt?.receiptUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={viewingReceipt.receiptUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Abrir imagen original
+                </a>
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setViewingReceipt(null)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
