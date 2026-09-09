@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff } from 'lucide-react';
+import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff, RotateCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
@@ -31,6 +31,7 @@ import type { User as AppUser, AppSettings } from '@/lib/types';
 import { AddExpenseFAB } from './add-expense-fab';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -43,7 +44,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [accessCodeInput, setAccessCodeInput] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const pathname = usePathname();
+
+  const handleRefreshApp = () => {
+    setIsRefreshing(true);
+    window.location.reload();
+  };
 
   const settingsDocRef = useMemoFirebase(
     () => (firestore ? doc(firestore, 'settings', 'app_settings') : null),
@@ -309,6 +316,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </Button>
               <AddExpenseFAB />
+
+              {/* Botón flotante para refrescar / recargar manualmente la app */}
+              <Button
+                type="button"
+                onClick={handleRefreshApp}
+                disabled={isRefreshing}
+                className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg bg-gradient-to-br from-sky-500 to-blue-600 hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0"
+                size="icon"
+                title="Recargar y refrescar app"
+              >
+                <RotateCw className={cn("h-10 w-10 sm:h-12 sm:w-12 transition-transform duration-500", isRefreshing && "animate-spin")} />
+                <span className="sr-only">Recargar App</span>
+              </Button>
             </div>
           )}
         </main>
