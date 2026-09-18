@@ -43,7 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { logAction } from '@/lib/logger';
 
 
@@ -346,17 +346,27 @@ export default function DashboardPage() {
                             </div>
 
                             {paid && contribution ? (
-                              <button
-                                onClick={() => confirmRevertPayment(contribution)}
-                                disabled={!user}
-                                className="flex items-center text-sm font-semibold text-emerald-600 disabled:cursor-not-allowed disabled:opacity-70 hover:opacity-80 transition-opacity"
-                              >
-                                <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                                Pagado
-                              </button>
+                              user ? (
+                                <button
+                                  onClick={() => confirmRevertPayment(contribution)}
+                                  className="flex items-center text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-opacity"
+                                  title="Clic para revertir pago (Admin)"
+                                >
+                                  <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                                  Pagado
+                                </button>
+                              ) : (
+                                <span className="flex items-center text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                                  Pagado
+                                </span>
+                              )
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className="hidden items-center text-sm font-semibold text-gray-500 sm:flex">
+                                <span className={cn(
+                                  "items-center text-xs sm:text-sm font-semibold text-orange-600 dark:text-orange-400",
+                                  user ? "hidden sm:flex" : "flex"
+                                )}>
                                   <XCircle className="mr-1.5 h-4 w-4" />
                                   Pendiente
                                 </span>
@@ -368,6 +378,7 @@ export default function DashboardPage() {
                                   >
                                     <CheckCircle className="mr-2 h-4 w-4" />
                                     <span className="hidden sm:inline">Marcar como Pagado</span>
+                                    <span className="sm:hidden">Pagar</span>
                                   </Button>
                                 )}
                               </div>

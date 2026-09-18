@@ -52,7 +52,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isCheckingUsers, setIsCheckingUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pathname = usePathname();
-  const isPublicPage = Boolean(pathname?.startsWith('/requests/') && pathname !== '/requests');
+  const isPublicPage = pathname === '/' || Boolean(pathname?.startsWith('/requests/') && pathname !== '/requests');
   const isProtectedPage = !isPublicPage;
 
   const handleRefreshApp = () => {
