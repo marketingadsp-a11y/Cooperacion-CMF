@@ -16,22 +16,24 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff, RotateCw } from 'lucide-react';
+import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff, RotateCw, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
 import { useState, useEffect } from 'react';
-import { collection, doc, query, where, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, query, where, limit, getDocs, addDoc } from 'firebase/firestore';
 import type { User as AppUser, AppSettings } from '@/lib/types';
 import { AddExpenseFAB } from './add-expense-fab';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { logAction } from '@/lib/logger';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -44,6 +46,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [accessCodeInput, setAccessCodeInput] = useState('');
+  const [newAdminName, setNewAdminName] = useState('');
+  const [isInitialSetup, setIsInitialSetup] = useState(false);
+  const [isCheckingUsers, setIsCheckingUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pathname = usePathname();
 
@@ -66,13 +71,101 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const handleOpenLoginChange = (open: boolean) => {
+  const handleOpenLoginChange = async (open: boolean) => {
     setLoginOpen(open);
-    if (!open) {
+    if (open) {
+      setLoginError(null);
+      setAccessCodeInput('');
+      setNewAdminName('');
+      setShowCode(false);
+
+      if (firestore) {
+        setIsCheckingUsers(true);
+        try {
+          const usersRef = collection(firestore, 'users');
+          const checkSnapshot = await getDocs(query(usersRef, limit(1)));
+          setIsInitialSetup(checkSnapshot.empty);
+        } catch (err) {
+          console.error('Error checking users:', err);
+          setIsInitialSetup(false);
+        } finally {
+          setIsCheckingUsers(false);
+        }
+      }
+    } else {
       setLoginError(null);
       setIsLoggingIn(false);
       setAccessCodeInput('');
+      setNewAdminName('');
       setShowCode(false);
+      setIsInitialSetup(false);
+      setIsCheckingUsers(false);
+    }
+  };
+
+  const handleCreateInitialAdmin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!auth || !firestore || isLoggingIn) return;
+
+    const cleanName = newAdminName.trim();
+    const cleanCode = accessCodeInput.trim();
+
+    if (!cleanName) {
+      setLoginError('Por favor ingresa un nombre para el administrador.');
+      return;
+    }
+    if (!cleanCode) {
+      setLoginError('Por favor ingresa un código de acceso o PIN.');
+      return;
+    }
+
+    setLoginError(null);
+    setIsLoggingIn(true);
+
+    try {
+      // 1. Iniciar sesión anónima para habilitar permisos de escritura según firestore.rules (isSignedIn())
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
+      // 2. Guardar el primer usuario administrador en la colección users
+      const usersRef = collection(firestore, 'users');
+      await addDoc(usersRef, {
+        name: cleanName,
+        accessCode: cleanCode,
+      });
+
+      // 3. Registrar acción en la bitácora
+      logAction(
+        firestore,
+        `creó el administrador principal inicial (${cleanName})`,
+        'system',
+        cleanName
+      );
+
+      // 4. Guardar sesión y estado
+      setAdminName(cleanName);
+      localStorage.setItem('adminName', cleanName);
+
+      toast({
+        title: `¡Bienvenido, ${cleanName}!`,
+        description: 'Tu usuario administrador ha sido configurado y has iniciado sesión.',
+      });
+
+      setLoginOpen(false);
+      setAccessCodeInput('');
+      setNewAdminName('');
+      setIsInitialSetup(false);
+    } catch (error: any) {
+      console.error('Error creating initial admin:', error);
+      setLoginError(error.message || 'Ocurrió un error al crear el administrador.');
+      toast({
+        variant: 'destructive',
+        title: 'Error de configuración',
+        description: error.message,
+      });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -96,6 +189,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
+        // Doble verificación: si no existe ningún usuario en absoluto, activar modo creación inicial
+        const checkEmptySnap = await getDocs(query(usersRef, limit(1)));
+        if (checkEmptySnap.empty) {
+          setIsInitialSetup(true);
+          setLoginError('No hay administradores registrados en esta base de datos. Por favor crea el primero.');
+          setIsLoggingIn(false);
+          return;
+        }
+
         setLoginError('Código de acceso no válido.');
         setIsLoggingIn(false);
         return;
@@ -221,69 +323,173 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     Acceder
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px] w-[92vw] rounded-2xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl p-6">
-                  <DialogHeader className="text-center sm:text-center pb-1">
-                    <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center mb-2 text-primary border border-primary/20 shadow-inner">
-                      <LogIn className="h-6 w-6" />
+                <DialogContent className="sm:max-w-[400px] w-[92vw] rounded-2xl bg-white/95 dark:bg-zinc-900/95 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl p-6">
+                  {isCheckingUsers ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-xs font-medium tracking-wide">Comprobando base de datos...</p>
                     </div>
-                    <DialogTitle className="text-xl font-bold">Acceso de Administrador</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleLogin} className="space-y-4 pt-2">
-                    <div className="relative">
-                      <Input
-                        id="accessCode"
-                        name="accessCode"
-                        type={showCode ? 'text' : 'password'}
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        autoComplete="one-time-code"
-                        placeholder="••••"
-                        value={accessCodeInput}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          setAccessCodeInput(val);
-                          if (loginError) setLoginError(null);
-                        }}
-                        className="text-center text-2xl tracking-[0.35em] font-mono h-14 rounded-xl bg-white/60 dark:bg-black/40 border-muted-foreground/20 focus-visible:ring-primary pr-12 text-foreground"
-                        autoFocus
-                        disabled={isLoggingIn}
-                        maxLength={8}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCode(!showCode)}
-                        tabIndex={-1}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg hover:bg-muted/40"
-                        title={showCode ? 'Ocultar código' : 'Mostrar código'}
-                      >
-                        {showCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
+                  ) : isInitialSetup ? (
+                    <>
+                      <DialogHeader className="text-center sm:text-center pb-2">
+                        <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500/15 dark:bg-amber-500/25 flex items-center justify-center mb-2 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-inner">
+                          <ShieldCheck className="h-6 w-6" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold">Crear Primer Administrador</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground text-center pt-1">
+                          Esta base de datos es nueva. Configura el nombre y la contraseña/PIN del administrador principal.
+                        </DialogDescription>
+                      </DialogHeader>
 
-                    {loginError && (
-                      <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2.5 text-center text-xs text-destructive font-medium animate-in fade-in">
-                        {loginError}
-                      </div>
-                    )}
+                      <form onSubmit={handleCreateInitialAdmin} className="space-y-4 pt-1">
+                        <div className="space-y-1.5 text-left">
+                          <Label htmlFor="newAdminName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Nombre del Administrador
+                          </Label>
+                          <Input
+                            id="newAdminName"
+                            type="text"
+                            placeholder="Ej. Cristobal o Dirección"
+                            value={newAdminName}
+                            onChange={(e) => {
+                              setNewAdminName(e.target.value);
+                              if (loginError) setLoginError(null);
+                            }}
+                            className="h-11 rounded-xl bg-white/60 dark:bg-black/40 border-muted-foreground/20 text-sm focus-visible:ring-primary"
+                            autoFocus
+                            disabled={isLoggingIn}
+                            required
+                          />
+                        </div>
 
-                    <DialogFooter className="pt-2 sm:space-x-0">
-                      <Button
-                        type="submit"
-                        className="w-full h-11 rounded-xl font-medium shadow-md transition-all active:scale-[0.98]"
-                        disabled={isLoggingIn || !accessCodeInput.trim()}
-                      >
-                        {isLoggingIn ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Verificando acceso...
-                          </>
-                        ) : (
-                          'Entrar'
+                        <div className="space-y-1.5 text-left">
+                          <Label htmlFor="newAccessCode" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Código / Contraseña de Acceso (PIN)
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="newAccessCode"
+                              name="newAccessCode"
+                              type={showCode ? 'text' : 'password'}
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder="••••"
+                              value={accessCodeInput}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                setAccessCodeInput(val);
+                                if (loginError) setLoginError(null);
+                              }}
+                              className="text-center text-2xl tracking-[0.35em] font-mono h-12 rounded-xl bg-white/60 dark:bg-black/40 border-muted-foreground/20 focus-visible:ring-primary pr-12 text-foreground"
+                              disabled={isLoggingIn}
+                              maxLength={8}
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCode(!showCode)}
+                              tabIndex={-1}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg hover:bg-muted/40"
+                              title={showCode ? 'Ocultar código' : 'Mostrar código'}
+                            >
+                              {showCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            Usa entre 4 y 8 dígitos. Este código se te pedirá para iniciar sesión.
+                          </p>
+                        </div>
+
+                        {loginError && (
+                          <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2.5 text-center text-xs text-destructive font-medium animate-in fade-in">
+                            {loginError}
+                          </div>
                         )}
-                      </Button>
-                    </DialogFooter>
-                  </form>
+
+                        <DialogFooter className="pt-2 sm:space-x-0">
+                          <Button
+                            type="submit"
+                            className="w-full h-11 rounded-xl font-medium shadow-md transition-all active:scale-[0.98] bg-primary hover:bg-primary/90"
+                            disabled={isLoggingIn || !newAdminName.trim() || !accessCodeInput.trim()}
+                          >
+                            {isLoggingIn ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Configurando administrador...
+                              </>
+                            ) : (
+                              'Crear Administrador y Entrar'
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      <DialogHeader className="text-center sm:text-center pb-1">
+                        <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center mb-2 text-primary border border-primary/20 shadow-inner">
+                          <LogIn className="h-6 w-6" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold">Acceso de Administrador</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleLogin} className="space-y-4 pt-2">
+                        <div className="relative">
+                          <Input
+                            id="accessCode"
+                            name="accessCode"
+                            type={showCode ? 'text' : 'password'}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="one-time-code"
+                            placeholder="••••"
+                            value={accessCodeInput}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              setAccessCodeInput(val);
+                              if (loginError) setLoginError(null);
+                            }}
+                            className="text-center text-2xl tracking-[0.35em] font-mono h-14 rounded-xl bg-white/60 dark:bg-black/40 border-muted-foreground/20 focus-visible:ring-primary pr-12 text-foreground"
+                            autoFocus
+                            disabled={isLoggingIn}
+                            maxLength={8}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCode(!showCode)}
+                            tabIndex={-1}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg hover:bg-muted/40"
+                            title={showCode ? 'Ocultar código' : 'Mostrar código'}
+                          >
+                            {showCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
+                        </div>
+
+                        {loginError && (
+                          <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2.5 text-center text-xs text-destructive font-medium animate-in fade-in">
+                            {loginError}
+                          </div>
+                        )}
+
+                        <DialogFooter className="pt-2 sm:space-x-0">
+                          <Button
+                            type="submit"
+                            className="w-full h-11 rounded-xl font-medium shadow-md transition-all active:scale-[0.98]"
+                            disabled={isLoggingIn || !accessCodeInput.trim()}
+                          >
+                            {isLoggingIn ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Verificando acceso...
+                              </>
+                            ) : (
+                              'Entrar'
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </>
+                  )}
                 </DialogContent>
               </Dialog>
             )
