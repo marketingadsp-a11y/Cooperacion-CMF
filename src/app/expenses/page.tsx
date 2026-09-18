@@ -226,6 +226,10 @@ export default function ExpensesPage() {
       console.error('Error deleting expense:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar el gasto.' });
       setDeletingExpense(null);
+    } finally {
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = '';
+      }
     }
   };
 
@@ -520,7 +524,10 @@ export default function ExpensesPage() {
                               >
                                 {expense.receiptUrl && (
                                   <DropdownMenuItem
-                                    onClick={() => setViewingReceipt(expense)}
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setTimeout(() => setViewingReceipt(expense), 50);
+                                    }}
                                     className="rounded-xl cursor-pointer"
                                   >
                                     <Eye className="mr-2 h-4 w-4 text-primary" />
@@ -529,7 +536,10 @@ export default function ExpensesPage() {
                                 )}
                                 <DropdownMenuItem
                                   className="text-destructive rounded-xl cursor-pointer"
-                                  onClick={() => setDeletingExpense(expense)}
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setTimeout(() => setDeletingExpense(expense), 50);
+                                  }}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Eliminar
@@ -615,7 +625,14 @@ export default function ExpensesPage() {
       {/* Alerta de confirmación de eliminación */}
       <AlertDialog
         open={!!deletingExpense}
-        onOpenChange={(isOpen) => !isOpen && setDeletingExpense(null)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setDeletingExpense(null);
+            if (typeof document !== 'undefined') {
+              document.body.style.pointerEvents = '';
+            }
+          }
+        }}
       >
         <AlertDialogContent className="sm:max-w-md w-[92vw] rounded-3xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl p-5 sm:p-6">
           <AlertDialogHeader className="space-y-2 text-left">

@@ -114,6 +114,9 @@ export default function SettingsPage() {
     setFormOpen(false);
     setTimeout(() => {
       setEditingUser(null);
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = '';
+      }
     }, 150);
   };
 
@@ -128,6 +131,10 @@ export default function SettingsPage() {
       console.error('Error deleting user:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar el usuario.' });
       setDeletingUser(null);
+    } finally {
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = '';
+      }
     }
   };
 
@@ -653,7 +660,10 @@ export default function SettingsPage() {
                               className="rounded-2xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-xl"
                             >
                               <DropdownMenuItem
-                                onClick={() => handleOpenForm(u)}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setTimeout(() => handleOpenForm(u), 50);
+                                }}
                                 className="rounded-xl cursor-pointer"
                               >
                                 <Edit3 className="mr-2 h-4 w-4 text-primary" />
@@ -661,7 +671,10 @@ export default function SettingsPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive rounded-xl cursor-pointer"
-                                onClick={() => setDeletingUser(u)}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setTimeout(() => setDeletingUser(u), 50);
+                                }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar
@@ -763,7 +776,14 @@ export default function SettingsPage() {
       {/* Alerta de confirmación de eliminar usuario */}
       <AlertDialog
         open={!!deletingUser}
-        onOpenChange={(isOpen) => !isOpen && setDeletingUser(null)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setDeletingUser(null);
+            if (typeof document !== 'undefined') {
+              document.body.style.pointerEvents = '';
+            }
+          }
+        }}
       >
         <AlertDialogContent className="sm:max-w-md w-[92vw] rounded-3xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl p-5 sm:p-6">
           <AlertDialogHeader className="space-y-2 text-left">

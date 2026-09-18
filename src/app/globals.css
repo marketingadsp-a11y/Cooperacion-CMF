@@ -73,8 +73,10 @@
   * {
     @apply border-border;
   }
-  body {
+  body,
+  body[data-scroll-locked] {
     @apply bg-background text-foreground;
+    pointer-events: auto !important;
     background-color: #f6f8fc;
     background-image: 
       radial-gradient(at 0% 0%, rgba(109, 40, 217, 0.14) 0px, transparent 45%),

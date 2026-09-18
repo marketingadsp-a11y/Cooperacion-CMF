@@ -117,6 +117,9 @@ export default function StudentsPage() {
     setFormOpen(false);
     setTimeout(() => {
       setEditingStudent(null);
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = '';
+      }
     }, 150);
   };
 
@@ -173,6 +176,10 @@ export default function StudentsPage() {
         description: 'No se pudo eliminar el alumno.',
       });
       setDeletingStudent(null);
+    } finally {
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = '';
+      }
     }
   };
 
@@ -590,7 +597,10 @@ export default function StudentsPage() {
                                   className="rounded-2xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-xl"
                                 >
                                   <DropdownMenuItem
-                                    onClick={() => handleOpenForm(student)}
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setTimeout(() => handleOpenForm(student), 50);
+                                    }}
                                     className="rounded-xl cursor-pointer"
                                   >
                                     <Edit3 className="mr-2 h-4 w-4 text-primary" />
@@ -598,7 +608,10 @@ export default function StudentsPage() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="text-destructive rounded-xl cursor-pointer"
-                                    onClick={() => setDeletingStudent(student)}
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setTimeout(() => setDeletingStudent(student), 50);
+                                    }}
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Eliminar
@@ -656,7 +669,14 @@ export default function StudentsPage() {
       {/* Alerta de confirmación de eliminación estilo Liquid Glass */}
       <AlertDialog
         open={!!deletingStudent}
-        onOpenChange={(isOpen) => !isOpen && setDeletingStudent(null)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setDeletingStudent(null);
+            if (typeof document !== 'undefined') {
+              document.body.style.pointerEvents = '';
+            }
+          }
+        }}
       >
         <AlertDialogContent className="sm:max-w-md w-[92vw] rounded-3xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl p-5 sm:p-6">
           <AlertDialogHeader className="space-y-2 text-left">
