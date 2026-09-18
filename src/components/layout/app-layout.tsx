@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff, RotateCw, ShieldCheck } from 'lucide-react';
+import { PanelLeft, LogIn, LogOut, Handshake, LayoutDashboard, Loader2, Eye, EyeOff, RotateCw, ShieldCheck, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
@@ -51,6 +51,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isCheckingUsers, setIsCheckingUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pathname = usePathname();
+  const isPublicPage = Boolean(pathname?.startsWith('/requests/') && pathname !== '/requests');
+  const isProtectedPage = !isPublicPage;
 
   const handleRefreshApp = () => {
     setIsRefreshing(true);
@@ -509,7 +511,43 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 relative">
-          {children}
+          {isUserLoading ? (
+            <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <Loader2 className="h-9 w-9 animate-spin text-primary" />
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">
+                Verificando sesión...
+              </p>
+            </div>
+          ) : !user && isProtectedPage ? (
+            <div className="min-h-[75vh] flex items-center justify-center p-4 sm:p-6">
+              <div className="w-full max-w-md p-8 sm:p-10 rounded-3xl bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.12)] text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 border border-primary/20 dark:border-white/10 flex items-center justify-center text-primary shadow-inner">
+                  <Lock className="h-8 w-8 text-primary" />
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                    Acceso Restringido
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Esta sección contiene información interna del sistema. Debes iniciar sesión como administrador para acceder.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    onClick={() => handleOpenLoginChange(true)}
+                    className="w-full h-12 rounded-xl font-medium shadow-md bg-primary hover:bg-primary/90 text-white transition-all active:scale-[0.98] text-sm"
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Acceder como Administrador
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
 
           {/* Floating Action Dock (Apple Liquid Glass Dock) - Botones al doble de tamaño */}
           {user && (
