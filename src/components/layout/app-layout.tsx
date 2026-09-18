@@ -178,7 +178,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {appSettings?.headerLogoUrl ? (
                 <img
                   src={appSettings.headerLogoUrl}
-                  alt="Logo Cooperación CMF"
+                  alt={`Logo ${process.env.NEXT_PUBLIC_APP_NAME || 'Cooperación'} ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'CMF'}`}
                   className="h-full w-full object-contain p-0.5"
                 />
               ) : (
@@ -186,7 +186,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
             <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-1.5">
-              Cooperación <span className="text-primary font-black">CMF</span>
+              {process.env.NEXT_PUBLIC_APP_NAME || 'Cooperación'}{' '}
+              <span className="text-primary font-black">
+                {process.env.NEXT_PUBLIC_COMPANY_NAME || 'CMF'}
+              </span>
             </h1>
           </Link>
 

@@ -18,13 +18,14 @@ import type { AppSettings } from '@/lib/types';
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  // Use a static default logo to prevent server-side fetch errors during metadata generation.
-  // The PWA manifest will still attempt to fetch the dynamic logo.
-  const pwaLogoUrl = 'https://i.ibb.co/JWfQGf4d/logo-coperacion-cmf.jpg';
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Cooperación';
+  const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || 'CMF';
+  const fullTitle = `${appName} ${companyName}`.trim();
+  const pwaLogoUrl = process.env.NEXT_PUBLIC_PWA_LOGO_URL || 'https://i.ibb.co/JWfQGf4d/logo-coperacion-cmf.jpg';
 
   return {
-    title: 'Cooperación CMF',
-    description: 'Gestiona las contribuciones y finanzas de la comunidad.',
+    title: fullTitle,
+    description: `Gestiona las contribuciones y finanzas de ${fullTitle}.`,
     manifest: '/manifest.webmanifest',
     icons: {
       icon: pwaLogoUrl,

@@ -202,18 +202,19 @@ export default function SettingsPage() {
       let finalLogoUrl = logoUrlInput || '';
 
       if (logoFile) {
-        if (!appSettings?.imgbbApiKey) {
+        const effectiveImgbbKey = appSettings?.imgbbApiKey || process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+        if (!effectiveImgbbKey) {
           toast({
             variant: 'destructive',
             title: 'API Key de ImgBB requerida',
-            description: 'Para subir la imagen del logo debes tener configurada la API Key de ImgBB.',
+            description: 'Para subir la imagen del logo debes tener configurada la API Key de ImgBB aquí o en Vercel (NEXT_PUBLIC_IMGBB_API_KEY).',
           });
           setIsSavingLogo(false);
           return;
         }
 
         toast({ title: 'Subiendo logotipo...', description: 'Enviando imagen a ImgBB.' });
-        finalLogoUrl = await uploadImageToImgBB(logoFile, appSettings.imgbbApiKey);
+        finalLogoUrl = await uploadImageToImgBB(logoFile, effectiveImgbbKey);
       }
 
       const settingsRef = doc(firestore, 'settings', 'app_settings');

@@ -20,7 +20,7 @@ export function Logo({ className }: { className?: string }) {
         {appSettings?.headerLogoUrl ? (
           <img
             src={appSettings.headerLogoUrl}
-            alt="Logo Cooperación CMF"
+            alt={`Logo ${process.env.NEXT_PUBLIC_APP_NAME || 'Cooperación'} ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'CMF'}`}
             className="h-full w-full object-contain p-0.5"
           />
         ) : (
@@ -29,10 +29,10 @@ export function Logo({ className }: { className?: string }) {
       </div>
       <div className="flex flex-col group-data-[collapsible=icon]:hidden">
         <span className="font-headline text-base font-bold tracking-tight text-sidebar-foreground">
-          Cooperación
+          {process.env.NEXT_PUBLIC_APP_NAME || 'Cooperación'}
         </span>
         <span className="text-[10px] font-semibold text-primary uppercase tracking-widest -mt-0.5">
-          CMF
+          {process.env.NEXT_PUBLIC_COMPANY_NAME || 'CMF'}
         </span>
       </div>
     </div>
