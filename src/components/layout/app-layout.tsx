@@ -158,11 +158,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setIsInitialSetup(false);
     } catch (error: any) {
       console.error('Error creating initial admin:', error);
-      setLoginError(error.message || 'Ocurrió un error al crear el administrador.');
+      let errorMsg = error.message || 'Ocurrió un error al crear el administrador.';
+      if (error.code === 'auth/configuration-not-found' || error.message?.includes('configuration-not-found')) {
+        errorMsg = 'Falta activar Authentication en este Firebase: Ve a Firebase Console > Compilación > Authentication > botón "Comenzar" y en "Sign-in method" activa el proveedor "Anónimo".';
+      } else if (error.code === 'auth/operation-not-allowed' || error.message?.includes('operation-not-allowed')) {
+        errorMsg = 'El proveedor Anónimo no está habilitado: Ve a Firebase Console > Authentication > pestaña "Sign-in method" y activa "Anónimo".';
+      }
+      setLoginError(errorMsg);
       toast({
         variant: 'destructive',
-        title: 'Error de configuración',
-        description: error.message,
+        title: 'Activar Autenticación en Firebase',
+        description: errorMsg,
       });
     } finally {
       setIsLoggingIn(false);
@@ -222,11 +228,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setAccessCodeInput('');
     } catch (error: any) {
       console.error(error);
-      setLoginError(error.message || 'Ocurrió un error al iniciar sesión.');
+      let errorMsg = error.message || 'Ocurrió un error al iniciar sesión.';
+      if (error.code === 'auth/configuration-not-found' || error.message?.includes('configuration-not-found')) {
+        errorMsg = 'Falta activar Authentication en este Firebase: Ve a Firebase Console > Compilación > Authentication > botón "Comenzar" y en "Sign-in method" activa el proveedor "Anónimo".';
+      } else if (error.code === 'auth/operation-not-allowed' || error.message?.includes('operation-not-allowed')) {
+        errorMsg = 'El proveedor Anónimo no está habilitado: Ve a Firebase Console > Authentication > pestaña "Sign-in method" y activa "Anónimo".';
+      }
+      setLoginError(errorMsg);
       toast({
         variant: 'destructive',
         title: 'Error de acceso',
-        description: error.message,
+        description: errorMsg,
       });
     } finally {
       setIsLoggingIn(false);
