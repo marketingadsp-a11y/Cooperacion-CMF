@@ -61,10 +61,13 @@ import {
   Receipt,
   ExternalLink,
   Image as ImageIcon,
+  Calendar,
 } from 'lucide-react';
-import type { Student, Contribution, ContributionRequest, Expense } from '@/lib/types';
-import { useUser, useCollection, useFirestore, useMemoFirebase, addDocument, deleteDocument } from '@/firebase';
+import type { Student, Contribution, ContributionRequest, Expense, AppSettings, SchoolCycle } from '@/lib/types';
+import { useUser, useCollection, useFirestore, useMemoFirebase, useDoc, addDocument, deleteDocument } from '@/firebase';
 import { collection, query, orderBy, Timestamp, serverTimestamp, doc } from 'firebase/firestore';
+import { filterByCycle } from '@/lib/cycles';
+import { useMemo } from 'react';
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -99,19 +102,52 @@ export default function DashboardPage() {
   );
   const { data: expenses } = useCollection<Expense>(expensesQuery);
 
-  const totalIncome = contributions?.reduce((sum, c) => sum + c.amount, 0) ?? 0;
-  const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0;
+  const settingsDocRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'settings', 'app_settings') : null),
+    [firestore]
+  );
+  const { data: appSettings } = useDoc<AppSettings>(settingsDocRef);
+
+  const activeCycleRef = useMemoFirebase(
+    () => (firestore && appSettings?.activeCycleId ? doc(firestore, 'school_cycles', appSettings.activeCycleId) : null),
+    [firestore, appSettings?.activeCycleId]
+  );
+  const { data: activeCycle } = useDoc<SchoolCycle>(activeCycleRef);
+
+  // Filtrar según ciclo escolar activo y preferencia de mostrar ciclos anteriores
+  const shouldFilterByCycle = Boolean(!appSettings?.showPreviousCycles && activeCycle);
+
+  const filteredContributions = useMemo(() => {
+    if (!contributions) return [];
+    if (!shouldFilterByCycle) return contributions;
+    return filterByCycle(contributions, (c) => c.date, activeCycle);
+  }, [contributions, shouldFilterByCycle, activeCycle]);
+
+  const filteredExpenses = useMemo(() => {
+    if (!expenses) return [];
+    if (!shouldFilterByCycle) return expenses;
+    return filterByCycle(expenses, (e) => e.date, activeCycle);
+  }, [expenses, shouldFilterByCycle, activeCycle]);
+
+  const filteredRequests = useMemo(() => {
+    if (!contributionRequests) return [];
+    if (!shouldFilterByCycle) return contributionRequests;
+    return filterByCycle(contributionRequests, (r) => r.createdAt, activeCycle);
+  }, [contributionRequests, shouldFilterByCycle, activeCycle]);
+
+  const totalIncome = filteredContributions.reduce((sum, c) => sum + c.amount, 0);
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
   const balance = totalIncome - totalExpenses;
   
-  const mostRecentRequestId = contributionRequests && contributionRequests.length > 0 ? contributionRequests[0].id : undefined;
-  const mostRecentRequestTitle = contributionRequests && contributionRequests.length > 0 ? contributionRequests[0].title : '';
+  const mostRecentRequestId = filteredRequests && filteredRequests.length > 0 ? filteredRequests[0].id : undefined;
+  const mostRecentRequestTitle = filteredRequests && filteredRequests.length > 0 ? filteredRequests[0].title : '';
 
   const studentContributionStatus = (
     requestId: string
   ): { student: Student; paid: boolean; contribution: Contribution | undefined }[] => {
     if (!students) return [];
     return students.map((student) => {
-      const contribution = contributions?.find(
+      const contribution = filteredContributions.find(
         (c) => c.studentId === student.id && c.requestId === requestId
       );
       return { student, paid: !!contribution, contribution };
@@ -175,6 +211,35 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pb-36 sm:pb-40">
+      {/* Encabezado con indicador de ciclo escolar activo */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Panel Principal
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Resumen financiero y estado de aportaciones
+          </p>
+        </div>
+
+        {activeCycle && (
+          <Badge
+            variant={shouldFilterByCycle ? 'default' : 'outline'}
+            className={cn(
+              'self-start sm:self-auto gap-1.5 py-1 px-3 rounded-full text-xs font-semibold shrink-0 transition-colors',
+              shouldFilterByCycle
+                ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/15'
+                : 'text-muted-foreground border-muted-foreground/30'
+            )}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            {shouldFilterByCycle
+              ? `Ciclo: ${activeCycle.name}`
+              : `Todos los ciclos (${activeCycle.name})`}
+          </Badge>
+        )}
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Saldo en Caja"
@@ -244,9 +309,9 @@ export default function DashboardPage() {
             <DialogHeader>
               <DialogTitle>Registro de Gastos</DialogTitle>
             </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden space-y-2.5 pr-1 py-1">
-              {expenses?.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 sm:p-3.5 transition-colors hover:bg-muted/50">
+            <div className="max-h-[60vh] overflow-y-auto space-y-2.5 pr-1 py-1">
+              {filteredExpenses?.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between gap-3 rounded-xl border border-black/5 dark:border-white/5 bg-muted/40 p-3 sm:p-3.5 transition-colors hover:bg-muted/70">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
                       <ShoppingCart className="h-4 w-4" />
@@ -275,11 +340,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
-              {expenses?.length === 0 && (
+              {filteredExpenses?.length === 0 && (
                  <div className="flex flex-col items-center justify-center py-16 text-center">
                   <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <h3 className="font-semibold text-lg">Sin Gastos</h3>
-                  <p className="text-muted-foreground">Aún no se han registrado gastos.</p>
+                  <p className="text-muted-foreground">Aún no se han registrado gastos para este ciclo.</p>
                 </div>
               )}
             </div>
@@ -309,9 +374,9 @@ export default function DashboardPage() {
           <CardTitle>Estado de Cooperaciones</CardTitle>
         </CardHeader>
         <CardContent>
-          {mostRecentRequestId && (
+          {mostRecentRequestId ? (
             <Accordion type="single" collapsible className="w-full" defaultValue={mostRecentRequestId}>
-              {(contributionRequests || []).map((request) => (
+              {(filteredRequests || []).map((request) => (
                 <AccordionItem value={request.id!} key={request.id} className="border-b border-border/40 py-1">
                   <AccordionTrigger className="hover:no-underline hover:bg-white/50 dark:hover:bg-white/5 px-4 py-3 rounded-xl transition-all">
                     <div className="flex w-full items-center justify-between pr-4">
@@ -391,6 +456,12 @@ export default function DashboardPage() {
                 </AccordionItem>
               ))}
             </Accordion>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground space-y-2">
+              <Calendar className="h-10 w-10 mx-auto text-muted-foreground/40" />
+              <p className="text-sm font-medium">No hay cooperaciones para este ciclo escolar</p>
+              <p className="text-xs">Las cooperaciones registradas en este periodo aparecerán aquí.</p>
+            </div>
           )}
         </CardContent>
       </Card>

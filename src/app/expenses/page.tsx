@@ -30,8 +30,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Expense, AppSettings } from '@/lib/types';
+import type { Expense, AppSettings, SchoolCycle } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { filterByCycle } from '@/lib/cycles';
 import {
   PlusCircle,
   MoreHorizontal,
@@ -82,6 +83,17 @@ export default function ExpensesPage() {
     [firestore]
   );
   const { data: appSettings } = useDoc<AppSettings>(settingsDocRef);
+
+  const activeCycleDocRef = useMemoFirebase(
+    () => (firestore && appSettings?.activeCycleId ? doc(firestore, 'school_cycles', appSettings.activeCycleId) : null),
+    [firestore, appSettings?.activeCycleId]
+  );
+  const { data: activeCycle } = useDoc<SchoolCycle>(activeCycleDocRef);
+
+  const shouldFilterCycle = !appSettings?.showPreviousCycles && !!activeCycle;
+  const filteredExpenses = expenses
+    ? (shouldFilterCycle ? filterByCycle(expenses, (e) => e.date, activeCycle) : expenses)
+    : [];
 
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [ticketFile, setTicketFile] = useState<File | null>(null);
@@ -233,8 +245,8 @@ export default function ExpensesPage() {
     }
   };
 
-  const totalSpent = expenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
-  const countWithTickets = expenses?.filter((e) => !!e.receiptUrl).length || 0;
+  const totalSpent = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const countWithTickets = filteredExpenses.filter((e) => !!e.receiptUrl).length;
 
   return (
     <div className="flex-1 space-y-5 p-3.5 sm:p-6 md:p-8 max-w-7xl mx-auto">
@@ -245,13 +257,18 @@ export default function ExpensesPage() {
             <ShoppingCart className="h-6 w-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 Gastos
               </h1>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 backdrop-blur-md">
-                {expenses?.length || 0}
+                {filteredExpenses.length}
               </span>
+              {shouldFilterCycle && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 backdrop-blur-md">
+                  Ciclo: {activeCycle.name}
+                </span>
+              )}
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Total erogado: <strong className="text-foreground">{formatCurrency(totalSpent)}</strong>
@@ -393,11 +410,11 @@ export default function ExpensesPage() {
               <div className="w-10 h-10 mx-auto rounded-full border-2 border-primary border-t-transparent animate-spin" />
               <p className="text-sm font-medium">Cargando registro de gastos...</p>
             </div>
-          ) : expenses && expenses.length > 0 ? (
+          ) : filteredExpenses && filteredExpenses.length > 0 ? (
             <>
               {/* VISTA MÓVIL (Celulares): Tarjetas interactivas Apple Liquid Glass */}
               <div className="block sm:hidden space-y-2.5">
-                {expenses.map((expense) => {
+                {filteredExpenses.map((expense) => {
                   const dateStr = toDate(expense.date).toLocaleDateString('es-MX', {
                     day: 'numeric',
                     month: 'short',
@@ -480,7 +497,7 @@ export default function ExpensesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {expenses.map((expense) => (
+                    {filteredExpenses.map((expense) => (
                       <TableRow
                         key={expense.id}
                         className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors border-b border-white/15 dark:border-white/5"
@@ -560,9 +577,13 @@ export default function ExpensesPage() {
                 <ShoppingCart className="h-8 w-8" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-semibold text-lg text-foreground">No hay gastos registrados</h3>
+                <h3 className="font-semibold text-lg text-foreground">
+                  {shouldFilterCycle && activeCycle ? `No hay gastos en el ciclo ${activeCycle.name}` : 'No hay gastos registrados'}
+                </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto">
-                  Aún no se ha registrado ninguna salida de dinero.
+                  {shouldFilterCycle && activeCycle
+                    ? `No se encontraron salidas de dinero registradas entre el ${activeCycle.startDate} y el ${activeCycle.endDate}. Puedes cambiar el ciclo o mostrar ciclos anteriores en Ajustes.`
+                    : 'Aún no se ha registrado ninguna salida de dinero.'}
                 </p>
               </div>
             </div>

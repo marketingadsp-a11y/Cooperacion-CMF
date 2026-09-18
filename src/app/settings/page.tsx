@@ -20,9 +20,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { User, AppSettings } from '@/lib/types';
+import type { User, AppSettings, SchoolCycle } from '@/lib/types';
 import {
   PlusCircle,
   MoreHorizontal,
@@ -41,6 +50,9 @@ import {
   UserCheck,
   Edit3,
   Sparkles,
+  Calendar,
+  CalendarCheck,
+  Check,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadImageToImgBB } from '@/lib/imgbb';
@@ -58,8 +70,9 @@ import {
   useMemoFirebase,
   deleteDocument,
   setDocument,
+  addDocument,
 } from '@/firebase';
-import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, serverTimestamp } from 'firebase/firestore';
 import { UserForm } from './user-form';
 import { useToast } from '@/hooks/use-toast';
 import { logAction } from '@/lib/logger';
@@ -90,6 +103,20 @@ export default function SettingsPage() {
   );
   const { data: appSettings } = useDoc<AppSettings>(settingsDocRef);
 
+  const cyclesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'school_cycles') : null),
+    [firestore]
+  );
+  const { data: schoolCycles } = useCollection<SchoolCycle>(cyclesCollection);
+
+  const [isCycleModalOpen, setCycleModalOpen] = useState(false);
+  const [editingCycle, setEditingCycle] = useState<SchoolCycle | null>(null);
+  const [cycleName, setCycleName] = useState('');
+  const [cycleStartDate, setCycleStartDate] = useState('');
+  const [cycleEndDate, setCycleEndDate] = useState('');
+  const [isSavingCycle, setIsSavingCycle] = useState(false);
+  const [deletingCycle, setDeletingCycle] = useState<SchoolCycle | null>(null);
+
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -108,6 +135,148 @@ export default function SettingsPage() {
   const handleOpenForm = (user: User | null = null) => {
     setEditingUser(user);
     setFormOpen(true);
+  };
+
+  const handleOpenNewCycleModal = () => {
+    setEditingCycle(null);
+    setCycleName('');
+    setCycleStartDate('');
+    setCycleEndDate('');
+    setCycleModalOpen(true);
+  };
+
+  const handleOpenEditCycleModal = (cycle: SchoolCycle) => {
+    setEditingCycle(cycle);
+    setCycleName(cycle.name);
+    setCycleStartDate(cycle.startDate);
+    setCycleEndDate(cycle.endDate);
+    setCycleModalOpen(true);
+  };
+
+  const handleSaveCycle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore || !user) return;
+
+    if (!cycleName.trim() || !cycleStartDate || !cycleEndDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Campos requeridos',
+        description: 'Ingresa el nombre del ciclo y ambas fechas.',
+      });
+      return;
+    }
+
+    if (cycleStartDate > cycleEndDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Rango de fechas inválido',
+        description: 'La fecha de inicio debe ser anterior o igual a la fecha de fin.',
+      });
+      return;
+    }
+
+    setIsSavingCycle(true);
+    try {
+      if (editingCycle?.id) {
+        const cycleRef = doc(firestore, 'school_cycles', editingCycle.id);
+        await setDocument(cycleRef, {
+          name: cycleName.trim(),
+          startDate: cycleStartDate,
+          endDate: cycleEndDate,
+        }, { merge: true });
+
+        logAction(firestore, `actualizó el ciclo escolar "${cycleName.trim()}" (${cycleStartDate} a ${cycleEndDate})`, 'system', user.displayName || 'Admin');
+        toast({ title: 'Ciclo escolar actualizado' });
+      } else {
+        const cyclesCol = collection(firestore, 'school_cycles');
+        const docRef = await addDocument(cyclesCol, {
+          name: cycleName.trim(),
+          startDate: cycleStartDate,
+          endDate: cycleEndDate,
+          createdAt: serverTimestamp(),
+        });
+
+        if (!appSettings?.activeCycleId && docRef?.id) {
+          const sRef = doc(firestore, 'settings', 'app_settings');
+          await setDocument(sRef, { activeCycleId: docRef.id }, { merge: true });
+        }
+
+        logAction(firestore, `registró el ciclo escolar "${cycleName.trim()}" (${cycleStartDate} a ${cycleEndDate})`, 'system', user.displayName || 'Admin');
+        toast({ title: 'Ciclo escolar registrado' });
+      }
+
+      setCycleModalOpen(false);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err?.message || 'No se pudo guardar el ciclo escolar.',
+      });
+    } finally {
+      setIsSavingCycle(false);
+      document.body.style.pointerEvents = '';
+    }
+  };
+
+  const handleSetActiveCycle = async (cycleId: string) => {
+    if (!firestore || !user) return;
+    try {
+      const sRef = doc(firestore, 'settings', 'app_settings');
+      await setDocument(sRef, { activeCycleId: cycleId }, { merge: true });
+      const selCycle = schoolCycles?.find(c => c.id === cycleId);
+      logAction(firestore, `estableció como ciclo activo a "${selCycle?.name || cycleId}"`, 'system', user.displayName || 'Admin');
+      toast({ title: 'Ciclo activo actualizado' });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err?.message || 'No se pudo cambiar el ciclo activo.',
+      });
+    }
+  };
+
+  const handleToggleShowPreviousCycles = async (checked: boolean) => {
+    if (!firestore || !user) return;
+    try {
+      const sRef = doc(firestore, 'settings', 'app_settings');
+      await setDocument(sRef, { showPreviousCycles: checked }, { merge: true });
+      logAction(firestore, `${checked ? 'activó' : 'desactivó'} la visualización de datos de ciclos anteriores`, 'system', user.displayName || 'Admin');
+      toast({
+        title: checked ? 'Mostrando todos los ciclos' : 'Ocultando ciclos anteriores',
+        description: checked ? 'Se visualizarán los registros históricos.' : 'Solo se mostrarán los datos del ciclo escolar activo.',
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err?.message || 'No se pudo actualizar la preferencia.',
+      });
+    }
+  };
+
+  const handleDeleteCycle = async () => {
+    if (!firestore || !deletingCycle?.id || !user) return;
+    try {
+      const cycleRef = doc(firestore, 'school_cycles', deletingCycle.id);
+      await deleteDocument(cycleRef);
+
+      if (appSettings?.activeCycleId === deletingCycle.id) {
+        const sRef = doc(firestore, 'settings', 'app_settings');
+        await setDocument(sRef, { activeCycleId: '' }, { merge: true });
+      }
+
+      logAction(firestore, `eliminó el ciclo escolar "${deletingCycle.name}"`, 'system', user.displayName || 'Admin');
+      toast({ title: 'Ciclo escolar eliminado' });
+      setDeletingCycle(null);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err?.message || 'No se pudo eliminar el ciclo escolar.',
+      });
+    } finally {
+      document.body.style.pointerEvents = '';
+    }
   };
 
   const handleCloseForm = () => {
@@ -373,6 +542,190 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* 0. SECCIÓN: CICLOS ESCOLARES */}
+      <Card className="border border-white/40 dark:border-white/10 bg-white/70 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06)] rounded-3xl overflow-hidden">
+        <CardHeader className="p-4 sm:p-6 border-b border-white/30 dark:border-white/10 bg-white/40 dark:bg-black/20 backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <CalendarCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold">Ciclos Escolares</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Gestiona los periodos escolares y filtra registros automáticamente por fechas.
+                </CardDescription>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleOpenNewCycleModal}
+              className="h-10 rounded-xl font-medium shadow-md bg-primary hover:bg-primary/90 text-white gap-2 transition-all active:scale-[0.98] text-xs sm:text-sm shrink-0"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Nuevo Ciclo Escolar
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-4 sm:p-6 space-y-6">
+          {/* Opciones de ciclo activo y visualización */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Selector de Ciclo Activo */}
+            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-2">
+              <Label className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-primary" />
+                Ciclo Escolar en Curso
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Selecciona el ciclo escolar que está activo actualmente.
+              </p>
+              {schoolCycles && schoolCycles.length > 0 ? (
+                <div className="pt-1">
+                  <select
+                    value={appSettings?.activeCycleId || ''}
+                    onChange={(e) => handleSetActiveCycle(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-foreground text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="" disabled>Selecciona un ciclo escolar...</option>
+                    {schoolCycles.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.startDate} a {c.endDate})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <p className="text-xs italic text-muted-foreground pt-1">
+                  Aún no hay ciclos escolares registrados. Registra uno abajo.
+                </p>
+              )}
+            </div>
+
+            {/* Switch para mostrar u ocultar ciclos anteriores */}
+            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="show-previous-cycles" className="text-xs sm:text-sm font-semibold text-foreground cursor-pointer">
+                  Mostrar datos de ciclos anteriores
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {appSettings?.showPreviousCycles
+                    ? 'Activado: Se muestran todos los registros históricos en la app.'
+                    : 'Desactivado: Solo se muestran datos que correspondan al ciclo activo.'}
+                </p>
+              </div>
+              <Switch
+                id="show-previous-cycles"
+                checked={Boolean(appSettings?.showPreviousCycles)}
+                onCheckedChange={handleToggleShowPreviousCycles}
+              />
+            </div>
+          </div>
+
+          {/* Tabla o Lista de Ciclos Escolares Registrados */}
+          <div className="space-y-3">
+            <h4 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Ciclos Registrados ({schoolCycles?.length || 0})
+            </h4>
+
+            {schoolCycles && schoolCycles.length > 0 ? (
+              <div className="rounded-2xl border border-border/40 overflow-hidden bg-white/40 dark:bg-black/20">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="font-semibold text-xs sm:text-sm">Nombre del Ciclo</TableHead>
+                      <TableHead className="font-semibold text-xs sm:text-sm">Fecha de Inicio</TableHead>
+                      <TableHead className="font-semibold text-xs sm:text-sm">Fecha de Fin</TableHead>
+                      <TableHead className="font-semibold text-xs sm:text-sm">Estado</TableHead>
+                      <TableHead className="text-right font-semibold text-xs sm:text-sm">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {schoolCycles.map((cycle) => {
+                      const isActive = appSettings?.activeCycleId === cycle.id;
+                      return (
+                        <TableRow key={cycle.id} className="hover:bg-white/60 dark:hover:bg-white/5 transition-colors">
+                          <TableCell className="font-medium text-xs sm:text-sm text-foreground">
+                            {cycle.name}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground">
+                            {cycle.startDate}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground">
+                            {cycle.endDate}
+                          </TableCell>
+                          <TableCell>
+                            {isActive ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1 text-[11px] font-semibold">
+                                <Check className="h-3 w-3" />
+                                Activo
+                              </Badge>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSetActiveCycle(cycle.id!)}
+                                className="h-7 text-xs text-muted-foreground hover:text-primary px-2"
+                              >
+                                Activar
+                              </Button>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenEditCycleModal(cycle)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                                title="Editar fechas o nombre"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingCycle(cycle)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                title="Eliminar ciclo"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-border/60 bg-black/5 dark:bg-white/5 space-y-2">
+                <Calendar className="h-8 w-8 mx-auto text-muted-foreground/50" />
+                <p className="text-xs sm:text-sm font-medium text-foreground">No hay ciclos escolares registrados</p>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                  Crea tu primer ciclo escolar (ej. &quot;2025-2026&quot;) para clasificar automáticamente todos los registros por periodos escolares.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenNewCycleModal}
+                  className="mt-2 text-xs rounded-xl"
+                >
+                  <PlusCircle className="h-3.5 w-3.5 mr-1" />
+                  Crear Primer Ciclo
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 1. SECCIÓN: LOGOTIPO DEL ENCABEZADO */}
       <Card className="border border-white/40 dark:border-white/10 bg-white/70 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06)] rounded-3xl overflow-hidden">
@@ -885,6 +1238,123 @@ export default function SettingsPage() {
           </AlertDialogContent>
         </AlertDialog>
       ))}
+
+      {/* MODAL REGISTRAR / EDITAR CICLO ESCOLAR */}
+      <Dialog open={isCycleModalOpen} onOpenChange={(open) => {
+        setCycleModalOpen(open);
+        if (!open) document.body.style.pointerEvents = '';
+      }}>
+        <DialogContent className="sm:max-w-[450px] w-[94vw] rounded-3xl p-6 border border-white/50 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-3xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {editingCycle ? 'Editar Ciclo Escolar' : 'Nuevo Ciclo Escolar'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Define el nombre y el rango de fechas oficial del ciclo escolar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveCycle} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cycle-name" className="text-xs font-semibold">
+                Nombre del Ciclo
+              </Label>
+              <Input
+                id="cycle-name"
+                value={cycleName}
+                onChange={(e) => setCycleName(e.target.value)}
+                placeholder="Ej: Ciclo Escolar 2025-2026"
+                className="h-10 rounded-xl"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cycle-start" className="text-xs font-semibold">
+                  Fecha de Inicio
+                </Label>
+                <Input
+                  id="cycle-start"
+                  type="date"
+                  value={cycleStartDate}
+                  onChange={(e) => setCycleStartDate(e.target.value)}
+                  className="h-10 rounded-xl text-xs sm:text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="cycle-end" className="text-xs font-semibold">
+                  Fecha de Fin
+                </Label>
+                <Input
+                  id="cycle-end"
+                  type="date"
+                  value={cycleEndDate}
+                  onChange={(e) => setCycleEndDate(e.target.value)}
+                  className="h-10 rounded-xl text-xs sm:text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCycleModalOpen(false)}
+                className="rounded-xl h-10 text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSavingCycle}
+                className="rounded-xl h-10 text-xs font-medium"
+              >
+                {isSavingCycle ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  editingCycle ? 'Guardar Cambios' : 'Registrar Ciclo'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO CONFIRMAR ELIMINAR CICLO ESCOLAR */}
+      <AlertDialog
+        open={Boolean(deletingCycle)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingCycle(null);
+            document.body.style.pointerEvents = '';
+          }
+        }}
+      >
+        <AlertDialogContent className="rounded-3xl p-6 border border-white/50 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-3xl shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">¿Eliminar ciclo escolar?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">
+              Estás a punto de eliminar el ciclo &quot;{deletingCycle?.name}&quot;. Esta acción no borra las cooperaciones ni gastos registrados, únicamente el periodo configurado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl h-10 text-xs">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCycle}
+              className="rounded-xl h-10 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar Ciclo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { formatCurrency } from '@/lib/utils';
+import { filterByCycle } from '@/lib/cycles';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -10,11 +12,12 @@ import {
   Calendar,
   Wallet,
   CheckCircle,
+  Filter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Contribution, Expense } from '@/lib/types';
-import { collection, Timestamp } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import type { Contribution, Expense, SchoolCycle, AppSettings } from '@/lib/types';
+import { collection, doc, query, orderBy, Timestamp } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -45,17 +48,51 @@ interface Transaction {
 export default function ReportsPage() {
   const firestore = useFirestore();
 
+  const cyclesQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'school_cycles'), orderBy('startDate', 'desc')) : null),
+    [firestore]
+  );
+  const { data: cycles } = useCollection<SchoolCycle>(cyclesQuery);
+
+  const settingsDocRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'settings', 'app_settings') : null),
+    [firestore]
+  );
+  const { data: appSettings } = useDoc<AppSettings>(settingsDocRef);
+
+  const [selectedCycleId, setSelectedCycleId] = useState<string>('all');
+  const [hasInitializedCycle, setHasInitializedCycle] = useState(false);
+
+  // Seleccionar ciclo activo por defecto cuando cargue la configuración
+  useEffect(() => {
+    if (!hasInitializedCycle && appSettings?.activeCycleId) {
+      setSelectedCycleId(appSettings.activeCycleId);
+      setHasInitializedCycle(true);
+    }
+  }, [appSettings?.activeCycleId, hasInitializedCycle]);
+
+  const selectedCycle = cycles?.find((c) => c.id === selectedCycleId);
+
   const contributionsQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'contributions') : null),
     [firestore]
   );
-  const { data: contributions } = useCollection<Contribution>(contributionsQuery);
+  const { data: rawContributions } = useCollection<Contribution>(contributionsQuery);
 
   const expensesQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'expenses') : null),
     [firestore]
   );
-  const { data: expenses } = useCollection<Expense>(expensesQuery);
+  const { data: rawExpenses } = useCollection<Expense>(expensesQuery);
+
+  // Filtrado por ciclo escolar seleccionado
+  const contributions = rawContributions
+    ? (selectedCycle ? filterByCycle(rawContributions, (c) => c.date, selectedCycle) : rawContributions)
+    : [];
+
+  const expenses = rawExpenses
+    ? (selectedCycle ? filterByCycle(rawExpenses, (e) => e.date, selectedCycle) : rawExpenses)
+    : [];
 
   const totalIncome = contributions?.reduce((sum, c) => sum + c.amount, 0) ?? 0;
   const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0;
@@ -114,30 +151,34 @@ export default function ReportsPage() {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.text('Reporte General de Finanzas', 14, 22);
+    doc.text('Reporte General de Finanzas', 14, 20);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(100);
     const exportDate = new Date().toLocaleDateString('es-MX');
-    doc.text(`Generado el: ${exportDate}`, 14, 28);
+    doc.text(`Generado el: ${exportDate}`, 14, 26);
+    const cycleText = selectedCycle
+      ? `Ciclo Escolar: ${selectedCycle.name} (${selectedCycle.startDate} al ${selectedCycle.endDate})`
+      : 'Ciclo Escolar: Todos los ciclos';
+    doc.text(cycleText, 14, 32);
 
     doc.setDrawColor(220, 220, 220);
-    doc.line(14, 32, 196, 32);
+    doc.line(14, 36, 196, 36);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(0);
-    doc.text('Resumen Financiero', 14, 40);
+    doc.text('Resumen Financiero', 14, 44);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Ingresos Totales: ${formatCurrency(totalIncome)}`, 14, 47);
-    doc.text(`Gastos Totales: ${formatCurrency(totalExpenses)}`, 14, 53);
-    doc.text(`Saldo Neto: ${formatCurrency(balance)}`, 14, 59);
+    doc.text(`Ingresos Totales: ${formatCurrency(totalIncome)}`, 14, 51);
+    doc.text(`Gastos Totales: ${formatCurrency(totalExpenses)}`, 14, 57);
+    doc.text(`Saldo Neto: ${formatCurrency(balance)}`, 14, 63);
 
     doc.autoTable({
-      startY: 66,
+      startY: 70,
       head: [['Descripción', 'Fecha', 'Tipo', 'Monto']],
       body: tableData,
       theme: 'striped',
@@ -152,35 +193,66 @@ export default function ReportsPage() {
       },
     });
 
-    doc.save(`Reporte de Cooperaciones - ${exportDate.replace(/\//g, '-')}.pdf`);
+    const filename = selectedCycle
+      ? `Reporte - ${selectedCycle.name.replace(/\s+/g, '_')} - ${exportDate.replace(/\//g, '-')}.pdf`
+      : `Reporte de Cooperaciones - ${exportDate.replace(/\//g, '-')}.pdf`;
+    doc.save(filename);
   };
 
   return (
     <div className="flex-1 space-y-5 p-3.5 sm:p-6 md:p-8 max-w-7xl mx-auto">
       {/* Encabezado Liquid Glass */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-2xl bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 shadow-inner backdrop-blur-md">
             <BarChart3 className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              Reporte General
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Reporte General
+              </h1>
+              {selectedCycle && (
+                <Badge variant="outline" className="rounded-full text-xs font-medium border-primary/30 text-primary bg-primary/10">
+                  {selectedCycle.name}
+                </Badge>
+              )}
+            </div>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Balance general y libro de ingresos y egresos
+              {selectedCycle
+                ? `Mostrando registros del ${selectedCycle.startDate} al ${selectedCycle.endDate}`
+                : 'Balance general y libro de ingresos y egresos'}
             </p>
           </div>
         </div>
 
-        <Button
-          onClick={handleExportPDF}
-          size="sm"
-          className="w-full sm:w-auto h-11 sm:h-10 rounded-xl shadow-md bg-gradient-to-r from-primary to-accent hover:opacity-95 text-white border border-white/20 font-medium transition-all active:scale-[0.98]"
-        >
-          <FileDown className="mr-1.5 h-4 w-4" />
-          Exportar a PDF
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          {/* Selector de Ciclo Escolar */}
+          <div className="relative flex items-center min-w-[200px]">
+            <Calendar className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <select
+              value={selectedCycleId}
+              onChange={(e) => setSelectedCycleId(e.target.value)}
+              className="w-full h-11 sm:h-10 pl-9 pr-8 rounded-xl bg-white/70 dark:bg-zinc-800/70 border border-white/40 dark:border-white/10 text-xs sm:text-sm font-medium text-foreground backdrop-blur-xl shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none cursor-pointer"
+            >
+              <option value="all">Todos los ciclos</option>
+              {cycles?.map((cycle) => (
+                <option key={cycle.id} value={cycle.id}>
+                  {cycle.name} {cycle.id === appSettings?.activeCycleId ? '⭐ (Activo)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            onClick={handleExportPDF}
+            size="sm"
+            className="w-full sm:w-auto h-11 sm:h-10 rounded-xl shadow-md bg-gradient-to-r from-primary to-accent hover:opacity-95 text-white border border-white/20 font-medium transition-all active:scale-[0.98]"
+          >
+            <FileDown className="mr-1.5 h-4 w-4" />
+            Exportar a PDF
+          </Button>
+        </div>
       </div>
 
       {/* Tarjetas de Estadísticas Liquid Glass */}
@@ -219,8 +291,15 @@ export default function ReportsPage() {
 
         <CardContent className="p-2 sm:p-4">
           {allTransactions.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground text-sm">
-              No hay transacciones registradas todavía.
+            <div className="py-16 text-center text-muted-foreground text-sm space-y-1">
+              <p className="font-semibold text-foreground">
+                {selectedCycle ? `No hay movimientos en el ciclo ${selectedCycle.name}` : 'No hay transacciones registradas todavía.'}
+              </p>
+              {selectedCycle && (
+                <p className="text-xs text-muted-foreground">
+                  No se registraron cobros ni gastos entre el {selectedCycle.startDate} y el {selectedCycle.endDate}.
+                </p>
+              )}
             </div>
           ) : (
             <>

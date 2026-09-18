@@ -52,9 +52,19 @@ export type SampleData = {
   expenses: Omit<Expense, 'id' | 'date'>[];
 };
 
+export type SchoolCycle = {
+  id?: string;
+  name: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string;   // "YYYY-MM-DD"
+  createdAt?: Timestamp | object;
+};
+
 export type AppSettings = {
   id?: 'app_settings'; // Singleton document
   pwaLogoUrl?: string;
   imgbbApiKey?: string;
   headerLogoUrl?: string;
+  activeCycleId?: string;
+  showPreviousCycles?: boolean;
 };

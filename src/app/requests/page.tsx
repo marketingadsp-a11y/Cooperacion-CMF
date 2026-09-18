@@ -12,20 +12,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { ContributionRequest, Contribution, Student } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
 import {
+  Handshake,
+  Calendar,
   PlusCircle,
   MoreHorizontal,
-  Handshake,
-  DollarSign,
-  Users,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
   Edit3,
   Trash2,
+  ArrowRight,
 } from 'lucide-react';
+import type { ContributionRequest, Contribution, Student, AppSettings, SchoolCycle } from '@/lib/types';
+import { useDoc } from '@/firebase';
+import { filterByCycle } from '@/lib/cycles';
+import { formatCurrency } from '@/lib/utils';
+import { useMemo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +71,26 @@ export default function RequestsPage() {
     [firestore]
   );
   const { data: allStudents } = useCollection<Student>(allStudentsQuery);
+
+  const settingsDocRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'settings', 'app_settings') : null),
+    [firestore]
+  );
+  const { data: appSettings } = useDoc<AppSettings>(settingsDocRef);
+
+  const activeCycleRef = useMemoFirebase(
+    () => (firestore && appSettings?.activeCycleId ? doc(firestore, 'school_cycles', appSettings.activeCycleId) : null),
+    [firestore, appSettings?.activeCycleId]
+  );
+  const { data: activeCycle } = useDoc<SchoolCycle>(activeCycleRef);
+
+  const shouldFilterByCycle = Boolean(!appSettings?.showPreviousCycles && activeCycle);
+
+  const filteredRequests = useMemo(() => {
+    if (!requests) return [];
+    if (!shouldFilterByCycle) return requests;
+    return filterByCycle(requests, (r) => r.createdAt, activeCycle);
+  }, [requests, shouldFilterByCycle, activeCycle]);
 
   const [editingRequest, setEditingRequest] = useState<ContributionRequest | null>(null);
   const [deletingRequest, setDeletingRequest] = useState<ContributionRequest | null>(null);
@@ -136,8 +156,14 @@ export default function RequestsPage() {
                 Cooperaciones
               </h1>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 backdrop-blur-md">
-                {requests?.length || 0}
+                {filteredRequests?.length || 0}
               </span>
+              {activeCycle && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted/60 text-muted-foreground border border-border/40">
+                  <Calendar className="h-3 w-3" />
+                  {shouldFilterByCycle ? activeCycle.name : `Todos (${activeCycle.name})`}
+                </span>
+              )}
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Solicitudes y seguimiento de cuotas por alumno
@@ -169,9 +195,9 @@ export default function RequestsPage() {
           <div className="w-10 h-10 mx-auto rounded-full border-2 border-primary border-t-transparent animate-spin" />
           <p className="text-sm font-medium">Cargando solicitudes de cooperación...</p>
         </div>
-      ) : requests && requests.length > 0 ? (
+      ) : filteredRequests && filteredRequests.length > 0 ? (
         <div className="grid gap-4 sm:gap-5 grid-cols-1 md:grid-cols-2">
-          {requests.map((request) => {
+          {filteredRequests.map((request) => {
             const contributions =
               allContributions?.filter((c) => c.requestId === request.id) || [];
             const totalCollected = contributions.reduce((sum, c) => sum + c.amount, 0);
