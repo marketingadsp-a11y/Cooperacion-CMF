@@ -174,7 +174,7 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pb-36 sm:pb-40">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Saldo en Caja"
