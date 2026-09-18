@@ -31,13 +31,14 @@ import { collection, doc, query, where, limit, getDocs, addDoc } from 'firebase/
 import type { User as AppUser, AppSettings } from '@/lib/types';
 import { AddExpenseFAB } from './add-expense-fab';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { logAction } from '@/lib/logger';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoginOpen, setLoginOpen] = useState(false);
@@ -256,6 +257,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       toast({
         title: 'Has cerrado sesión',
       });
+      router.push('/');
     } catch (error: any) {
       toast({
         variant: 'destructive',
