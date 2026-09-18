@@ -152,11 +152,11 @@ export function AddExpenseFAB() {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
-          className="h-15 w-15 sm:h-20 sm:w-20 rounded-2xl sm:rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 border border-white/25 flex items-center justify-center p-0"
+          className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 border border-white/25 flex items-center justify-center p-0 shrink-0"
           variant="destructive"
           size="icon"
         >
-          <MinusCircle className="h-7.5 w-7.5 sm:h-10 sm:w-10" />
+          <MinusCircle className="h-10 w-10 sm:h-12 sm:w-12" />
           <span className="sr-only">Añadir Gasto</span>
         </Button>
       </DialogTrigger>

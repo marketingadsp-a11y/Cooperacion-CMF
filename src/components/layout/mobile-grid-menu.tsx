@@ -124,11 +124,11 @@ export function MobileGridMenu() {
       <DialogTrigger asChild>
         <Button
           type="button"
-          className="fixed bottom-5 left-5 sm:bottom-6 sm:left-6 z-40 h-19 w-19 sm:h-26 sm:w-26 rounded-3xl sm:rounded-full shadow-[0_16px_40px_rgba(99,102,241,0.42),inset_0_1px_1px_rgba(255,255,255,0.6)] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white border border-white/40 backdrop-blur-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0"
+          className="fixed bottom-5 left-4 sm:bottom-6 sm:left-6 z-40 h-24 w-24 sm:h-28 sm:w-28 rounded-3xl sm:rounded-full shadow-[0_16px_40px_rgba(99,102,241,0.42),inset_0_1px_1px_rgba(255,255,255,0.6)] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white border border-white/40 backdrop-blur-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0"
           size="icon"
           title="Abrir menú principal"
         >
-          <LayoutGrid className="h-9.5 w-9.5 sm:h-13 sm:w-13" />
+          <LayoutGrid className="h-12 w-12 sm:h-14 sm:w-14" />
           <span className="sr-only">Menú Principal</span>
         </Button>
       </DialogTrigger>

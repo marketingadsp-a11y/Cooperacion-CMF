@@ -557,26 +557,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Floating Action Dock (Lado derecho con acciones rápidas) */}
           {user && (
-            <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 flex flex-row items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-3xl sm:rounded-full border border-white/40 dark:border-white/15 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.22),inset_0_1px_1px_rgba(255,255,255,0.6)] transition-all max-w-[calc(100vw-6.5rem)] overflow-x-auto no-scrollbar">
+            <div className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-row items-center gap-2.5 sm:gap-4 p-2 sm:p-3 rounded-3xl sm:rounded-full border border-white/40 dark:border-white/15 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.22),inset_0_1px_1px_rgba(255,255,255,0.6)] transition-all max-w-[calc(100vw-7.5rem)] overflow-x-auto no-scrollbar">
               {pathname !== '/' && (
                 <Button
                   asChild
-                  className="h-15 w-15 sm:h-20 sm:w-20 rounded-2xl sm:rounded-full shadow-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0 shrink-0"
+                  className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0 shrink-0"
                   size="icon"
                 >
                   <Link href="/">
-                    <LayoutDashboard className="h-7.5 w-7.5 sm:h-10 sm:w-10" />
+                    <LayoutDashboard className="h-10 w-10 sm:h-12 sm:w-12" />
                     <span className="sr-only">Ir al Panel Principal</span>
                   </Link>
                 </Button>
               )}
               <Button
                 asChild
-                className="h-15 w-15 sm:h-20 sm:w-20 rounded-2xl sm:rounded-full shadow-lg bg-gradient-to-br from-primary to-accent hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0 shrink-0"
+                className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg bg-gradient-to-br from-primary to-accent hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0 shrink-0"
                 size="icon"
               >
                 <Link href="/requests">
-                  <Handshake className="h-7.5 w-7.5 sm:h-10 sm:w-10" />
+                  <Handshake className="h-10 w-10 sm:h-12 sm:w-12" />
                   <span className="sr-only">Ir a Cooperaciones</span>
                 </Link>
               </Button>
@@ -587,11 +587,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={handleRefreshApp}
                 disabled={isRefreshing}
-                className="h-15 w-15 sm:h-20 sm:w-20 rounded-2xl sm:rounded-full shadow-lg bg-gradient-to-br from-sky-500 to-blue-600 hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0 shrink-0"
+                className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-full shadow-lg bg-gradient-to-br from-sky-500 to-blue-600 hover:opacity-95 text-white border border-white/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center p-0 shrink-0"
                 size="icon"
                 title="Recargar y refrescar app"
               >
-                <RotateCw className={cn("h-7.5 w-7.5 sm:h-10 sm:w-10 transition-transform duration-500", isRefreshing && "animate-spin")} />
+                <RotateCw className={cn("h-10 w-10 sm:h-12 sm:w-12 transition-transform duration-500", isRefreshing && "animate-spin")} />
                 <span className="sr-only">Recargar App</span>
               </Button>
             </div>
